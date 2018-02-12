@@ -71,10 +71,10 @@ vector<string> parallel_find_name( const fs::path& p, const std::regex& re )
     for( const auto& de : fs::directory_iterator(p) )
     {
         auto path = de.path();
-        if(is_directory(path)){
+        if(fs::is_directory(path)){
             future_results.push_back(std::async(parallel_find_name, path, re));
         }
-        else if( is_regular_file(path)
+        else if( fs::is_regular_file(path)
                     && std::regex_search(path.filename().string(), re) ){
             results.push_back(path.string());
         }
