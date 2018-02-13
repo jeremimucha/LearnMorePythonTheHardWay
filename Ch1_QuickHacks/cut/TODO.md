@@ -51,6 +51,10 @@ Usage:
 >20:54
 
 
+Given multiple FILES to process there's no indication in the output where one
+file ends and another begins.
+
+
 ## Ideas
 
 * Use the regex library - regex_token_iterator to get the resulting tokens from
@@ -61,3 +65,37 @@ This should make it easy to implement all the possible ranges (N, N-, N-M, -M)
 * Implement a class to encapsulate the processing? Or is a function enough?
 * Template would probably make it easy to implement all of the 
 -b, -c and -f options.
+
+
+## TODO
+
+* implement the necessary options:
+    -d, --delimiter
+    -f, --fields N-M range - this will need to be parsed and turned into
+    a pair of two ints.
+    Can use a regex here aswell and std::stoi to convert to int
+* Define a class to hold the result, can just be a typedef for now for vector\<string\>
+* Define a aclass to hold the complete result set. This can also be just a define
+for now - list\<vector\<string\>\>;
+* Define a template to process a single line and return the resulting fields
+* Define a template that opens a file and processes all the lines, it should return
+a list\<vector\<string\>\>
+* Define a template that processes all of the given files (concurrently?)
+
+
+## Done
+Not too happy this time. I've had a lot of trouble with the regex library and
+attempts to parse the fields range arguments properly before falling back
+on what it should be - an ugly hack. I also unnecessarily tried using wide strings
+right away, which also gave me some trouble.
+Once again - I need to stick to the simplest possible solutions the first time.
+Then later I should come back and improve on it.
+
+Caught myself a few times in very bad sitting positions. Ideally I'd like a
+standing setup, but for now I need to force myself to sit straight and relaxed
+somehow.
+
+Had trouble focusing this time. Probably had a hard because I hadn't written
+anything in few days.
+
+Didn't get distracter by the internet at least.
