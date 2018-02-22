@@ -22,15 +22,15 @@ using clara::Help;
 
 struct commandline_args
 {
-    bool ignore_case;
-    bool reverse_order;
-    bool ignore_leading_blanks;
-    bool dictionary_order;
-    bool random_sort;
-    bool check;
-    vector<string> infiles;
-    string outfile;
-    bool help_flag;
+    bool ignore_case{false};
+    bool reverse_order{false};
+    bool ignore_leading_blanks{false};
+    bool dictionary_order{false};
+    bool random_sort{false};
+    bool check{false};
+    vector<string> infiles{};
+    string outfile{};
+    bool help_flag{false};
 };
 
 using Lines = vector<string>;
@@ -55,6 +55,82 @@ template<typename Container>
 auto write_lines( const string& fname, const Container& container ) -> void;
 
 
+template<typename T>
+class IgnoreCaseMixin : public T
+{
+public:
+    auto operator()( const string& lhs, const string& rhs ) -> bool
+    {
+        auto to_upper = [](string s)->string
+        {
+            std::transform(s.begin(), s.end(), s.begin(),
+                [](unsigned char ch){ return std::toupper(ch); });
+            return s;
+        };
+        return T::operator()(to_upper(lhs), to_upper(rhs));
+    }
+};
+
+
+template<typename Predicate>
+class IgnoreCaseWrapper
+{
+public:
+    explicit IgnoreCaseWrapper( Predicate&& predicate )
+        : m_predicate(std::move(predicate)) { }
+    auto operator()( const string& lhs, const string& rhs ) -> bool
+    {
+        auto to_upper = [](string s)->string
+        {
+            std::transform(s.begin(), s.end(), s.begin(),
+                [](unsigned char ch){ return std::toupper(ch); });
+            return s;
+        };
+        return m_predicate(to_upper(lhs), to_upper(rhs));
+    }
+    auto operator()( string&& lhs, string&& rhs ) -> bool
+    {
+        auto to_upper = [](string&& s) -> string
+        {
+            std::transform(s.begin(), s.end(), s.begin(),
+                [](unsigned char ch){ return std::toupper(ch); });
+            return s;
+        };
+        return m_predicate(std::move(lhs), std::move(rhs));
+    }
+private:
+    Predicate m_predicate;
+};
+template<typename T>
+IgnoreCaseWrapper<T> makeIgnoreCaseWrapper( T&& pred )
+{ return IgnoreCaseWrapper<T>(std::forward<T>(pred)); }
+
+// make sure to apply this one last
+template<typename Predicate>
+class IgnoreLeadingBlanksWrapper
+{
+public:
+    explicit IgnoreLeadingBlanksWrapper( Predicate&& predicate )
+        : m_predicate( std::move(predicate) ) { }
+    auto operator()( const string& lhs, const string& rhs ) -> bool
+    {
+        auto no_blanks = [](const string& s) -> string
+        {
+            const auto sbegin = s.find_first_not_of(" \t\n");
+            if( sbegin == std::string::npos )
+                return "";
+            return s.substr( sbegin, s.size() - sbegin );
+        };
+        return m_predicate(no_blanks(lhs),no_blanks(rhs));
+    }
+private:
+    Predicate m_predicate;
+};
+template<typename T>
+IgnoreLeadingBlanksWrapper<T> makeIgnoreLeadingBlanksWrapper( T&& pred )
+{ return IgnoreLeadingBlanksWrapper<T>(std::forward<T>(pred)); }
+
+
 int main( int argc, char* argv[] )
 {
     auto cli_args = commandline_args{};
@@ -63,6 +139,8 @@ int main( int argc, char* argv[] )
              ["-f"]["--ignore-case"]
         | Opt( cli_args.reverse_order, "Reverse the comparison" )
              ["-r"]["--reverse"]
+        | Opt( cli_args.ignore_leading_blanks, "Ignore leading whitespace" )
+             ["-b"]["--ignore-leading-blanks"]
         | Opt( cli_args.outfile, "Output file" )
              ["-o"]["--output-file"].required()
         | Arg( cli_args.infiles, "[FILE]..." )
@@ -74,13 +152,23 @@ int main( int argc, char* argv[] )
         return 1;
     }
 
+    std::function<bool(const string&, const string&)> predicate;
+    if( cli_args.reverse_order )
+        predicate = std::greater<string>();
+    else
+        predicate = std::less<string>();
+    if( cli_args.ignore_case )
+        predicate = makeIgnoreCaseWrapper(std::move(predicate));
+    if( cli_args.ignore_leading_blanks )
+        predicate = makeIgnoreLeadingBlanksWrapper(std::move(predicate));
+
     if( !cli_args.infiles.empty() ){
-        auto lines = process_files<Line_list>( cli_args.infiles, std::less<string>() );
+        auto lines = process_files<Line_list>( cli_args.infiles, predicate );
         write_lines(cli_args.outfile, lines);
     }
     else{
         auto lines = get_lines<Lines>(std::cin);
-        std::sort(lines.begin(), lines.end(), std::less<string>());
+        std::sort(lines.begin(), lines.end(), predicate);
         write_lines(cli_args.outfile, lines);
     }
 }
