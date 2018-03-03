@@ -77,8 +77,8 @@ target_include_directories( ${PROJECT_NAME}
     )
 target_include_directories( ${PROJECT_NAME}
     PRIVATE
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/${LibraryName}
-    $<INSTALL_INTERFACE:include/${LibraryName}
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME}>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
     )
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options( ${PROJECT_NAME} PUBLIC -Wall -Wextra -pedantic -Werror )

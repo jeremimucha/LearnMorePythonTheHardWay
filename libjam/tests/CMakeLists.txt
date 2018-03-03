@@ -16,7 +16,6 @@ project( ${TestProject} )
 # function or the appropriate Catch2 define.
 # Naming convention is assumed - test_someFeatureUnderTest.cpp
 file( GLOB TestSources
-      RELATIVE "${PROJECT_SOURCE_DIR}"
       "${PROJECT_SOURCE_DIR}/test_*.cpp"
     )
 
