@@ -227,6 +227,61 @@ using BiPred = PredicateBase<BinaryPredicateWrapper<Predicate,Function>>;
 /* ------------------------------------------------------------------------- */
 
 
+/* Iterators */
+/* ------------------------------------------------------------------------- */
+
+// --- transform_iterator
+template<typename Iterator
+        ,typename UnaryFunction
+        ,typename Reference
+            = std::result_of_t<const UnaryFunction(typename std::iterator_traits<Iterator>::reference)>
+        ,typename Value = std::remove_cv_t<std::remove_reference_t<Reference>>
+        >
+class transform_iterator
+{
+public:
+    using value_type = Value;
+    using reference = Reference;
+    using pointer = typename std::iterator_traits<Iterator>::pointer;
+    using difference_type = typename std::iterator_traits<Iterator>::difference_type;
+    using iterator_category = std::input_iterator_tag;
+
+    transform_iterator( const Iterator& it, UnaryFunction function )
+        : m_iterator{it}, m_function{function}
+        { }
+    UnaryFunction functor() const { return m_function; }
+    const Iterator& base() const { return m_iterator; }
+    reference operator*() const { return m_function(*m_iterator); }
+    transform_iterator& operator++()
+    {
+        ++m_iterator;
+        return *this;
+    }
+    transform_iterator& operator--()
+    {
+        --m_iterator;
+        return *this;
+    }
+
+    bool operator==(const transform_iterator& other) const noexcept
+    { return m_iterator == other.m_iterator; }
+    bool operator!=(const transform_iterator& other) const noexcept
+    { return !(*this == other); }
+private:
+    Iterator m_iterator;
+    UnaryFunction m_function;
+};
+
+template<typename Iterator, typename UnaryFunction>
+auto make_transform_iterator(const Iterator& it, UnaryFunction ufunc)
+{
+    return transform_iterator<Iterator,UnaryFunction>(it,ufunc);
+}
+
+
+/* ------------------------------------------------------------------------- */
+
+
 } // namespace
 
 

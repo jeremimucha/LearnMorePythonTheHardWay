@@ -3,6 +3,9 @@
 #include <functional>
 #include <algorithm>
 #include <vector>
+#include <iterator>
+
+#include <iostream>
 
 using std::vector;
 
@@ -23,5 +26,23 @@ TEST_CASE( "creating basic PredicateWrapper", "[PredicateWrapper]" )
         auto wpred = jam::wrap_predicate(predicate, action2, action );
         REQUIRE( true == std::none_of(test_input.cbegin(),
                             test_input.cend(), wpred) );
+    }
+}
+
+
+TEST_CASE( "transform_iterator" )
+{
+    auto test_input = std::vector<int>{0,1,2,3,4,5,6,7,8,9};
+    auto transform = [](int i){ std::cout << "ufunc " << i << std::endl; return ++i; };
+    auto expected = test_input;
+    std::transform(expected.begin(),expected.end(),expected.begin(), transform);
+
+    SECTION( "bla" ){
+        auto result = std::vector<int>{};
+        std::copy(jam::make_transform_iterator(test_input.cbegin(), transform)
+                 ,jam::make_transform_iterator(test_input.cend(), transform)
+                 ,std::back_inserter(result)
+                 );
+        REQUIRE( result == expected );
     }
 }
