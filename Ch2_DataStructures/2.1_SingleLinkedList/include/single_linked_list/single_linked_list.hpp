@@ -89,11 +89,44 @@ public:
     ~SingleLinkedList() noexcept { free(); }
 
 // --- copy control
-    SingleLinkedList( const SingleLinkedList& other );
-    SingleLinkedList( SingleLinkedList&& other ) noexcept;
-    SingleLinkedList& operator=( const SingleLinkedList& other );
-    SingleLinkedList& operator=( SingleLinkedList&& other) noexcept;
-    SingleLinkedList& operator=( std::initializer_list<T> ilist );
+    SingleLinkedList( const SingleLinkedList& other )
+        : alloc{other.alloc}
+        {
+            auto nodes = alloc_range(other.cbegin(), other.cend());
+            link_nodes(&head,nodes.first);
+        }
+    SingleLinkedList( SingleLinkedList&& other ) noexcept
+        : alloc{std::move(other.alloc)}
+        {
+            link_nodes(&head, other.head.next);
+            other.head.next = nullptr;
+        }
+
+    SingleLinkedList& operator=( const SingleLinkedList& other )
+        {
+            // if(this == &other) return *this;
+            auto nodes = alloc_range(other.cbegin(), other.cend());
+            free();
+            alloc = other.alloc;
+            link_nodes(&head, other.head.next);
+            return *this;
+        }
+    SingleLinkedList& operator=( SingleLinkedList&& other) noexcept
+        {
+            auto temp = head.next;
+            link_nodes(&head, other.head.next);
+            alloc = std::move(other.alloc);
+            // other is about to be destroyed let it handle freeing of our old data
+            link_nodes(&other.head, temp);
+            return *this;
+        }
+    SingleLinkedList& operator=( std::initializer_list<T> ilist )
+        {
+            auto nodes = alloc_range(ilist.begin(), ilist.end());
+            free();
+            link_nodes(&head, nodes.first);
+            return *this;
+        }
 
 // --- iterators
     iterator       before_begin() noexcept { return iterator{&head}; }
@@ -171,7 +204,19 @@ public:
     void resize( size_type count );
     void resize( size_type count, const value_type& value );
 
-    void swap( SingleLinkedList& other );
+    void swap( SingleLinkedList& other ) noexcept
+        {
+            using std::swap;
+            swap(alloc, other.alloc);
+            swap(head.next, other.head.next);
+        }
+
+    friend inline void swap( SingleLinkedList& lhs, SingleLinkedList& rhs ) noexcept
+        {
+            using std::swap;
+            swap(lhs.alloc, rhs.alloc);
+            swap(lhs.head.next, rhs.head.next);
+        }
 
 protected:
     template<typename... Args>
@@ -288,11 +333,11 @@ public:
     bool operator!=( const self& other ) const noexcept
         { return m_ptr != other.m_ptr; }
 
-template<typename> friend bool operator==( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept;
+template<typename U> friend bool operator==( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept;
 
-template<typename> friend bool operator!=( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept;
+template<typename U> friend bool operator!=( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept;
 private:
     const node* m_ptr;
 };
