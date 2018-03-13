@@ -36,8 +36,8 @@ friend class SLL_const_iterator<T>;
     explicit Node( Args&&... args )
         : data{ std::forward<Args>(args)... } { }
 
-    T           data;
-    Node<T>*    next{nullptr};
+    T        data;
+    Node*    next{nullptr};
 };
 /* ------------------------------------------------------------------------- */
 
@@ -108,7 +108,7 @@ public:
             auto nodes = alloc_range(other.cbegin(), other.cend());
             free();
             alloc = other.alloc;
-            link_nodes(&head, other.head.next);
+            link_nodes(&head, nodes.first);
             return *this;
         }
     SingleLinkedList& operator=( SingleLinkedList&& other) noexcept
@@ -154,10 +154,10 @@ public:
     void clear()  noexcept { free(); }
     iterator insert_after( const_iterator pos, const T& value );
     iterator insert_after( const_iterator pos, T&& vlaue );
-    iterator insert_after( const_iterator pos, size_type count, const T& value );
+    // iterator insert_after( const_iterator pos, size_type count, const T& value );
     template<typename InputIt>
     iterator insert_after( const_iterator pos, InputIt first, InputIt last );
-    iterator isnert_after( const_iterator pos, std::initializer_list<T> ilist );
+    iterator insert_after( const_iterator pos, std::initializer_list<T> ilist );
     
     template<typename... Args>
     iterator emplace_after( const_iterator pos, Args&&... args);
@@ -191,14 +191,16 @@ public:
             link_nodes(&head, data);
 
             Ensures(head.next != nullptr);
-            return *head.next->data;
+            return head.next->data;
         }
 
     void pop_front()
         {   Expects(head.next != nullptr);
             
-            auto temp = std::unique_ptr<node*>{head.next};
+            auto temp = head.next;
             link_nodes(&head, temp->next);
+            alloc.destroy(temp);
+            alloc.deallocate(temp,1);
         }
 
     void resize( size_type count );
@@ -228,7 +230,7 @@ protected:
     template<typename Iter>
     inline std::pair<node*,node*> alloc_range(Iter begin, Iter end);
 
-    inline void link_nodes( not_null<node*> pred, not_null<node*> succ );
+    inline void link_nodes( not_null<node*> pred, node* succ );
 
     void free() noexcept;
 private:
@@ -269,7 +271,7 @@ public:
             m_ptr = m_ptr->next;
             return *this;
         }
-    self& operator++(int) noexcept
+    self operator++(int) noexcept
         {
             auto rv = *this;
             m_ptr = m_ptr->next;
@@ -284,11 +286,15 @@ public:
     bool operator!=( const self& other ) const noexcept
         { return m_ptr != other.m_ptr; }
 
-template<typename> friend bool operator==( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept;
+template<typename U> friend bool operator==( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept;
+template<typename U> friend bool operator!=( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept;
 
-template<typename> friend bool operator!=( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept;
+template<typename U> friend bool operator==( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept;
+template<typename U> friend bool operator!=( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept;
 private:
     node* m_ptr;
 };
@@ -321,7 +327,7 @@ public:
             m_ptr = m_ptr->next;
             return *this;
         }
-    self& operator++(int) noexcept
+    self operator++(int) noexcept
         {
             auto rv = *this;
             m_ptr = m_ptr->next;
@@ -335,20 +341,33 @@ public:
 
 template<typename U> friend bool operator==( const SLL_iterator<U>& lhs
                       , const SLL_const_iterator<U>& rhs) noexcept;
-
 template<typename U> friend bool operator!=( const SLL_iterator<U>& lhs
                       , const SLL_const_iterator<U>& rhs) noexcept;
+
+template<typename U> friend bool operator==( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept;
+template<typename U> friend bool operator!=( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept;
 private:
     const node* m_ptr;
 };
 
-template<typename T>
-inline bool operator==( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept
+template<typename U>
+inline bool operator==( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept
 { return lhs.m_ptr == rhs.m_ptr; }
-template<typename T>
-inline bool operator!=( const SLL_iterator<T>& lhs
-                      , const SLL_const_iterator<T>& rhs) noexcept
+template<typename U>
+inline bool operator!=( const SLL_iterator<U>& lhs
+                      , const SLL_const_iterator<U>& rhs) noexcept
+{ return lhs.m_ptr != rhs.m_ptr; }
+
+template<typename U>
+inline bool operator==( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept
+{ return lhs.m_ptr == rhs.m_ptr; }
+template<typename U>
+inline bool operator!=( const SLL_const_iterator<U>& lhs
+                      , const SLL_iterator<U>& rhs) noexcept
 { return lhs.m_ptr != rhs.m_ptr; }
 /* ------------------------------------------------------------------------- */
 
@@ -424,7 +443,7 @@ SingleLinkedList<T>::alloc_range(Iter begin, Iter end) -> std::pair<node*,node*>
 
 template<typename T>
 inline void
-SingleLinkedList<T>::link_nodes( not_null<node*> pred, not_null<node*> succ )
+SingleLinkedList<T>::link_nodes( not_null<node*> pred, node* succ )
 {
     pred->next = succ;
 }
@@ -438,6 +457,124 @@ SingleLinkedList<T>::free() noexcept
         head.next = temp->next;
         alloc.destroy(temp);
         alloc.deallocate(temp,1);
+    }
+}
+
+template<typename T>
+auto SingleLinkedList<T>::insert_after( const_iterator pos, const T& value ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_node = make_node(value);
+    link_nodes(new_node, pred->next);
+    link_nodes(pred, new_node);
+    return iterator(new_node);
+}
+template<typename T>
+auto SingleLinkedList<T>::insert_after( const_iterator pos, T&& value ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_node = make_node(std::move(value));
+    link_nodes(new_node, pred->next);
+    link_nodes(pred, new_node);
+    return iterator(new_node);
+}
+// template<typename T>
+// auto SingleLinkedList<T>::insert_after( const_iterator pos, size_type count, const T& value ) -> iterator
+// { Expects(pos.m_ptr != nullptr);
+//     auto pred = const_cast<node*>(pos.m_ptr);
+//     auto new_nodes = alloc_n(count, value);
+//     link_nodes(new_nodes.second, pred->next);
+//     link_nodes(pred, new_nodes.first);
+//     return iterator(new_nodes.first);
+// }
+template<typename T>
+    template<typename InputIt>
+auto SingleLinkedList<T>::insert_after( const_iterator pos, InputIt first, InputIt last ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_nodes = alloc_range(first, last);
+    link_nodes(new_nodes.second, pred->next);
+    link_nodes(pred, new_nodes.first);
+    return iterator(new_nodes.first);
+}
+template<typename T>
+auto SingleLinkedList<T>::insert_after( const_iterator pos, std::initializer_list<T> ilist ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_nodes = alloc_range(ilist.begin(), ilist.end());
+    link_nodes(new_nodes.second, pred->next);
+    link_nodes(pred, new_nodes.first);
+    return iterator(new_nodes.first);
+}
+
+template<typename T>
+    template<typename... Args>
+auto SingleLinkedList<T>::emplace_after( const_iterator pos, Args&&... args) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_node = make_node(std::forward<Args>(args)...);
+    link_nodes(new_node, pred->next);
+    link_nodes(pred, new_node);
+    return iterator(new_node);
+}
+
+template<typename T>
+auto SingleLinkedList<T>::erase_after( const_iterator pos ) -> iterator
+{
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto nodedtor = [this](node* pn){ alloc.destroy(pn); alloc.deallocate(pn,1); };
+    if(pred->next){
+        auto freenode = std::unique_ptr<node,decltype(nodedtor)>(pred->next, nodedtor);
+        link_nodes(pred, pred->next->next);
+        return iterator(pred->next);
+    }
+    else { return end(); }
+}
+template<typename T>
+auto SingleLinkedList<T>::erase_after( const_iterator first, const_iterator last ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto b = const_cast<node*>(first.m_ptr);
+    auto e = const_cast<node*>(last.m_ptr);
+    link_nodes(b, e);
+    for( b = b->next; b != e ; ){
+        auto temp = b;
+        b = b->next;
+        alloc.destroy(temp);
+        alloc.deallocate(temp, 1);
+    }
+    return iterator(e);
+}
+template<typename T>
+void SingleLinkedList<T>::resize( size_type count )
+{
+    self::resize(count, T{});
+}
+template<typename T>
+void SingleLinkedList<T>::resize( size_type count, const value_type& value )
+{
+    // find the current count + last element
+    auto last_n_size = [count = count, pn = head.next]()mutable{
+        auto current_count = size_type{0};
+        auto last = pn;
+        for(; pn != nullptr && current_count < count; last = pn, pn = pn->next){
+            ++current_count;
+        }
+        return std::make_pair(last, current_count);
+    }();
+
+    if( last_n_size.second != count ){
+        // allocate elements to reach desired count
+        auto new_nodes = alloc_n(count - last_n_size.second, value);
+        link_nodes(last_n_size.first, new_nodes.first);
+    }
+    else{
+        // free the excess elements
+        for( auto n = last_n_size.first; n != nullptr; ){
+            auto temp = n;
+            n = n->next;
+            alloc.destroy(temp);
+            alloc.deallocate(temp, 1);
+        }
     }
 }
 /* ------------------------------------------------------------------------- */
