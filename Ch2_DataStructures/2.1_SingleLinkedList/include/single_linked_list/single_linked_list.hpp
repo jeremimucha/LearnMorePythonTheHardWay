@@ -5,6 +5,7 @@
 #include <utility>
 #include <iterator>
 #include <initializer_list>
+#include <type_traits>
 
 #define GSL_THROW_ON_CONTRACT_VIOLATION
 #include <gsl/gsl>
@@ -154,8 +155,14 @@ public:
     void clear()  noexcept { free(); }
     iterator insert_after( const_iterator pos, const T& value );
     iterator insert_after( const_iterator pos, T&& vlaue );
-    // iterator insert_after( const_iterator pos, size_type count, const T& value );
-    template<typename InputIt>
+    iterator insert_after( const_iterator pos, size_type count, const T& value );
+    template<typename InputIt
+            , typename = std::enable_if_t<
+                std::is_base_of_v<std::input_iterator_tag,
+                    typename std::iterator_traits<InputIt>::iterator_category
+                >
+              >
+            >
     iterator insert_after( const_iterator pos, InputIt first, InputIt last );
     iterator insert_after( const_iterator pos, std::initializer_list<T> ilist );
     
@@ -478,17 +485,19 @@ auto SingleLinkedList<T>::insert_after( const_iterator pos, T&& value ) -> itera
     link_nodes(pred, new_node);
     return iterator(new_node);
 }
-// template<typename T>
-// auto SingleLinkedList<T>::insert_after( const_iterator pos, size_type count, const T& value ) -> iterator
-// { Expects(pos.m_ptr != nullptr);
-//     auto pred = const_cast<node*>(pos.m_ptr);
-//     auto new_nodes = alloc_n(count, value);
-//     link_nodes(new_nodes.second, pred->next);
-//     link_nodes(pred, new_nodes.first);
-//     return iterator(new_nodes.first);
-// }
 template<typename T>
-    template<typename InputIt>
+auto SingleLinkedList<T>::insert_after( const_iterator pos, size_type count, const T& value ) -> iterator
+{ Expects(pos.m_ptr != nullptr);
+    auto pred = const_cast<node*>(pos.m_ptr);
+    auto new_nodes = alloc_n(count, value);
+    link_nodes(new_nodes.second, pred->next);
+    link_nodes(pred, new_nodes.first);
+    return iterator(new_nodes.first);
+}
+template<typename T>
+    template<typename InputIt
+        , typename
+        >
 auto SingleLinkedList<T>::insert_after( const_iterator pos, InputIt first, InputIt last ) -> iterator
 { Expects(pos.m_ptr != nullptr);
     auto pred = const_cast<node*>(pos.m_ptr);

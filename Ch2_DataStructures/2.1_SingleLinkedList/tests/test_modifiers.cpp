@@ -26,10 +26,10 @@ TEST_CASE( "Elements can be inserted into the SLL", "[insert][emplace]" )
 
     // this matches the insert_after(const_iterator pos, InputIt, InputIt) overload...
     // would have to use enable_if somehow to disable it for non-pointer/iterator types
-    // SECTION( "A number of copy-constructed elements can be inserted" ){
-    //     sll.insert_after(insertion_point, 10, 42);
-    //     REQUIRE(false);
-    // }
+    SECTION( "A number of copy-constructed elements can be inserted" ){
+        sll.insert_after(insertion_point, 10, 42);
+        REQUIRE(sll.size() == original_size + 10);
+    }
 
     SECTION( "A range of elements can be inserted" ){
         auto v = std::vector<int>{99, 88, 77, 66, 55, 44};
