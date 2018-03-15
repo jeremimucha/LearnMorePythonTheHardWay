@@ -34,6 +34,7 @@ struct Node
 friend class DoubleLinkedList<T>;
 friend class DLL_iterator<T>;
 friend class DLL_const_iterator<T>;
+template<typename U> friend bool ensure_invariant( const DoubleLinkedList<U>& );
 
     Node() noexcept = default;
     template<typename... Args>
@@ -47,37 +48,14 @@ friend class DLL_const_iterator<T>;
 };
 /* ------------------------------------------------------------------------- */
 
-class InvariantViolationException : public std::logic_error
-{
-    using std::logic_error::logic_error;
-};
-
-template<typename T>
-void ensure_invariant_empty( const DoubleLinkedList<T>& object )
-{
-    // invariant for an empty list
-    
-}
-
-template<typename T>
-void ensure_invariant( const DoubleLinkedList<T>& object )
-{
-    if( object.head.prev != nullptr )
-        throw InvariantViolationException("head.prev != nullptr");
-    if( object.tail.next != nullptr )
-        throw InvariantViolationException("tail.next != nullptr");
-    if( object.head.next == &object.head.tail )
-        ensure_invariant_empty(object);
-    else
-        ensure_invariant_nonempty(object);
-}
 
 /* DoubleLinkedList */
 /* ------------------------------------------------------------------------- */
 template<typename T>
 class DoubleLinkedList
 {
-    friend invariant<T>( const DoubleLinkedList<T>& );
+    template<typename U>
+    friend bool ensure_invariant( const DoubleLinkedList<U>& );
     using node                      = Node<T>;
     using Allocator                 = std::allocator<node>;
     using T_Allocator               = std::allocator<T>;
@@ -101,51 +79,95 @@ public:
 
 
 // --- constructors
-    DoubleLinkedList() noexcept = default;
-
-    explicit DoubleLinkedList( size_type count );
-    DoubleLinkedList( size_type count, const T& value );
-    DoubleLinkedList( std::initializer_list<T> ilist );
+    DoubleLinkedList() noexcept
+    {
+        link_nodes(&head, &tail);
+    }
+    explicit DoubleLinkedList( size_type count )
+        : DoubleLinkedList(count, T{}) { }
+    DoubleLinkedList( size_type count, const T& value )
+    {
+        auto nodes = alloc_n(count, value);
+        link_nodes(&head, nodes, &tail);
+    }
+    DoubleLinkedList( std::initializer_list<T> ilist )
+    {
+        auto nodes = alloc_range(ilist.begin(), ilist.end());
+        link_nodes(&head, nodes, &tail);
+    }
 
 // --- destructor
-    ~DoubleLinkedList() noexcept;
+    ~DoubleLinkedList() noexcept { free(); }
 
 // --- copy control
-    DoubleLinkedList( const DoubleLinkedList& other );
-    DoubleLinkedList( DoubleLinkedList&& other ) noexcept;
-    DoubleLinkedList& operator=( const DoubleLinkedList& other );
-    DoubleLinkedList& operator=( DoubleLinkedList&& other );
-    DoubleLinkedList& operator( initializer_list<T> ilist );
+    DoubleLinkedList( const DoubleLinkedList& other )
+        : alloc{other.alloc}
+    {
+        auto nodes = alloc_range(other.cbegin(), other.cend());
+        link_nodes(&head, nodes, &tail);
+    }
+    DoubleLinkedList( DoubleLinkedList&& other ) noexcept
+        : alloc{std::move(other.alloc)}
+    {
+        link_nodes(&head, {other.head.next, other.tail.prev}, &tail);
+        link_nodes(&other.head, &other.tail);
+    }
+    DoubleLinkedList& operator=( const DoubleLinkedList& other )
+    {
+    // potentially very expensive, should  we guard against self assignment
+    // rather than do a self-assignment safe implementation?
+        auto nodes = alloc_range(other.cbegin(), other.cend());
+        free();
+        link_nodes(&head, nodes, &tail);
+        return *this;
+    }
+    DoubleLinkedList& operator=( DoubleLinkedList&& other ) noexcept
+    {
+        alloc = std::move(other.alloc);
+    // just swap heads and tails and let the other object handle destruction
+    // of our old elements once it goes out of scope (bad?)
+        using std::swap;
+        swap(head, other.head);
+        swap(tail, other.tail);
+        return *this;
+    }
+    DoubleLinkedList& operator=( std::initializer_list<T> ilist )
+    {
+        auto nodes = alloc_range(ilist.begin(), ilist.end());
+        free();
+        link_nodes(&head, nodes, &tail);
+        return *this;
+    }
 
 // --- element access
-    reference front();
-    const_reference front() const;
-    reference back();
-    const_reference back() const;
+    reference front() { return head.next->data; }
+    const_reference front() const { return head.next->data; }
+    reference back() { return tail.prev->data; }
+    const_reference back() const { return tail.prev->data; }
 
 // --- iterators
-    iterator begin() noexcept;
-    const_iterator begin() const noexcept;
-    const_iterator cbegin() const noexcept;
-    iterator end() noexcept;
-    const_iterator end() const noexcept;
-    const_iterator cend() const noexcept;
-    reverse_iterator rbegin() noexcept;
-    const_reverse_iterator rbegin() const noexcept;
-    const_reverse_iterator crbegin() const noexcept;
-    reverse_iterator rend() noexcept;
-    const_reverse_iterator rend() const noexcept;
-    const_reverse_iterator crend() const noexcept;
+    iterator begin() noexcept { return iterator{head.next}; }
+    const_iterator begin() const noexcept { return cbegin(); }
+    const_iterator cbegin() const noexcept { return const_iterator{head.next}; }
+    iterator end() noexcept { return iterator{&tail}; }
+    const_iterator end() const noexcept { return cend(); }
+    const_iterator cend() const noexcept { return const_iterator{&tail}; }
+    reverse_iterator rbegin() noexcept { return reverse_iterator{begin()}; }
+    const_reverse_iterator rbegin() const noexcept { return crbegin(); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator{cbegin()}; }
+    reverse_iterator rend() noexcept { return reverse_iterator{end()}; }
+    const_reverse_iterator rend() const noexcept { return crend(); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator{cend()}; }
 
 // --- capacity
-    bool empty() const noexcept;
-    size_type size() const noexcept;
+    bool empty() const noexcept { return head.next == &tail; }
+    size_type size() const noexcept
+    { return std::count_if(cbegin(),cend(),[](const_reference){return true;}); }
 
 // --- modifiers
     void clear() noexcept;
     iterator insert( const_iterator pos, const T& value );
     iterator insert( const_iterator pos, T&& value );
-    iterator insert( const_iterator pos, const T& value );
     template<typename InputIt>
     iterator insert( const_iterator pos, InputIt first, InputIt last );
     iterator insert( const_iterator pos, std::initializer_list<T> ilist );
@@ -172,7 +194,13 @@ public:
 
     void swap( DoubleLinkedList& other ) noexcept;
 
-    friend void swap( DoubleLinkedList& lhs, DoubleLinkedList& rhs ) noexcept;
+    friend inline void swap( DoubleLinkedList& lhs, DoubleLinkedList& rhs ) noexcept
+    {
+        using std::swap;
+        swap(lhs.alloc, rhs.alloc);
+        swap(lhs.head, rhs.head);
+        swap(lhs.tail, rhs.tail);
+    }
 
 protected:
     template<typename... Args>
@@ -185,15 +213,15 @@ protected:
         return nn;
     }
 
-    inline void link_nodes( not_null<node*> pred, not_null<node*> succ )
+    inline void link_nodes( not_null<node*> pred, not_null<node*> succ ) noexcept
     {
         pred->next = succ;
         succ->prev = pred;
     }
 
     inline void link_nodes( not_null<node*> pred
-                   , std::pair<node*,node*> range
-                   , not_null<node*> succ )
+                          , std::pair<node*,node*> range
+                          , not_null<node*> succ ) noexcept
     {
         // insert a range of linked nodes beginning with 'range.first'
         // and ending with 'range.second' inbetween nodes 'pred' and 'succ'
@@ -217,12 +245,12 @@ protected:
     }
 
     template<typename InputIt>
-    std::pair<node*,node*> alloc_range( InputIt first, InputIt last )
-    { Expects(first != nullptr && last != nullptr);
-        auto first = make_node(*first);
+    std::pair<node*,node*> alloc_range( InputIt begin, InputIt end )
+    { Expects(begin != nullptr && end != nullptr);
+        auto first = make_node(*begin);
         auto pred = first;
-        while( ++first != last ){
-            auto succ = make_node(*first);
+        while( ++begin != end ){
+            auto succ = make_node(*begin);
             link_nodes(pred, succ);
             pred = succ;
         }
@@ -245,7 +273,25 @@ private:
     node tail{};
 };
 /* ------------------------------------------------------------------------- */
+class Invariant_violation_exception : public std::logic_error
+{
+    using std::logic_error::logic_error;
+};
 
+template<typename T>
+bool ensure_invariant( const DoubleLinkedList<T>& object )
+{
+    if( object.head.next == nullptr || object.tail.prev == nullptr )
+        throw Invariant_violation_exception("Head or tail point to a nullptr");
+    if( (object.head.next == &object.tail &&
+         object.tail.prev == &object.head)  // empty list
+        ||
+        (object.head.next->prev == &object.head &&
+         object.tail.prev->next == &object.tail) ) // non-empty list
+        return true;
+    else
+        throw Invariant_violation_exception("Empty or non-empty invariant violated");
+}
 
 /* DLL_iterator<T> */
 /* ------------------------------------------------------------------------- */
@@ -300,6 +346,11 @@ public:
         }
 
     operator const_iterator() { return const_iterator(base); }
+
+    template<typename U>
+    friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+    template<typename U>
+    friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
 private:
     node* base;
 };
@@ -355,8 +406,25 @@ public:
             base = base->prev;
             return *this;
         }
+    
+    template<typename U>
+    friend bool operator==(const DLL_const_iterator<U>& lhs,
+                           const DLL_const_iterator<U>& rhs);
+    template<typename U>
+    friend bool operator!=(const DLL_const_iterator<U>& lhs,
+                           const DLL_const_iterator<U>& rhs);
 private:
     const node* base;
 };
+
+template<typename U>
+bool operator==(const DLL_const_iterator<U>& lhs
+               ,const DLL_const_iterator<U>& rhs)
+{ return lhs.base == rhs.base; }
+
+template<typename U>
+bool operator!=(const DLL_const_iterator<U>& lhs
+               ,const DLL_const_iterator<U>& rhs)
+{ return lhs.base != rhs.base; }
 /* ------------------------------------------------------------------------- */
 #endif /* DOUBLELINKEDLIST_HPP_ */
