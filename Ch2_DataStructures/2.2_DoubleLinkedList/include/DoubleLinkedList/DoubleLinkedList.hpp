@@ -116,6 +116,7 @@ public:
     {
     // potentially very expensive, should  we guard against self assignment
     // rather than do a self-assignment safe implementation?
+        alloc = other.alloc;
         auto nodes = alloc_range(other.cbegin(), other.cend());
         free();
         link_nodes(&head, nodes, &tail);
@@ -123,12 +124,23 @@ public:
     }
     DoubleLinkedList& operator=( DoubleLinkedList&& other ) noexcept
     {
+        if( this == &other )
+            return *this;
         alloc = std::move(other.alloc);
-    // just swap heads and tails and let the other object handle destruction
-    // of our old elements once it goes out of scope (bad?)
-        using std::swap;
-        swap(head, other.head);
-        swap(tail, other.tail);
+        auto temp_first = head.next;
+        // auto temp_last = tail.prev;
+        // temp_last->next = nullptr;
+        tail.prev->next = nullptr;
+        // while( temp_first != nullptr ){
+        //     alloc.destroy(temp_first);
+        //     alloc.deallocate(temp_first,1);
+        //     temp_first = temp_first->next;
+        // }
+        link_nodes(&head, {other.head.next, other.tail.prev}, &tail);
+        link_nodes(&other.head, &other.tail);
+
+        free(temp_first, nullptr);
+
         return *this;
     }
     DoubleLinkedList& operator=( std::initializer_list<T> ilist )
@@ -140,10 +152,22 @@ public:
     }
 
 // --- element access
-    reference front() { return head.next->data; }
-    const_reference front() const { return head.next->data; }
-    reference back() { return tail.prev->data; }
-    const_reference back() const { return tail.prev->data; }
+    reference front()
+    { Expects(head.next != &tail);
+        return head.next->data;
+    }
+    const_reference front() const
+    { Expects(head.next != &tail);
+        return head.next->data;
+    }
+    reference back()
+    { Expects(tail.prev != &head);
+        return tail.prev->data;
+    }
+    const_reference back() const
+    { Expects(tail.prev != &head);
+        return tail.prev->data;
+    }
 
 // --- iterators
     iterator begin() noexcept { return iterator{head.next}; }
@@ -165,11 +189,29 @@ public:
     { return std::count_if(cbegin(),cend(),[](const_reference){return true;}); }
 
 // --- modifiers
-    void clear() noexcept;
-    iterator insert( const_iterator pos, const T& value );
-    iterator insert( const_iterator pos, T&& value );
+    void clear() noexcept { free(); }
+    iterator insert( const_iterator pos, const T& value )
+    {
+        auto newnode = make_node(value);
+        link_nodes( const_cast<node*>(pos.base->prev), {newnode, newnode}
+                  , const_cast<node*>(pos.base) );
+        return iterator(newnode);
+    }
+    iterator insert( const_iterator pos, T&& value )
+    {
+        auto newnode = make_node(std::move(value));
+        link_nodes( const_cast<node*>(pos.base->prev), {newnode, newnode}
+                  , const_cast<node*>(pos.base) );
+        return iterator(newnode);
+    }
     template<typename InputIt>
-    iterator insert( const_iterator pos, InputIt first, InputIt last );
+    iterator insert( const_iterator pos, InputIt first, InputIt last )
+    {
+        auto nodes = alloc_range(first, last);
+        link_nodes( const_cast<node*>(pos.base->prev), nodes
+                  , const_cast<node*>(pos.base) );
+        return iterator(nodes.first);
+    }
     iterator insert( const_iterator pos, std::initializer_list<T> ilist );
     template<typename... Args>
     iterator emplace( const_iterator pos, Args&&... args );
@@ -267,6 +309,22 @@ protected:
         }
         tail.prev = &head;
     }
+
+    void free( node* first, node* last ) noexcept
+    { Expects(first != nullptr);
+        while( first != last ){
+            auto temp = first;
+            first = first->next;
+            alloc.destroy(temp);
+            alloc.deallocate(temp,1);
+        }
+    }
+
+    void free( node* n ) noexcept
+    {
+        alloc.destroy(n);
+        alloc.deallocate(n,1);
+    }
 private:
     Allocator alloc{Allocator()};
     node head{};
@@ -347,10 +405,22 @@ public:
 
     operator const_iterator() { return const_iterator(base); }
 
-    template<typename U>
-    friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
-    template<typename U>
-    friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs);
 private:
     node* base;
 };
@@ -407,12 +477,23 @@ public:
             return *this;
         }
     
-    template<typename U>
-    friend bool operator==(const DLL_const_iterator<U>& lhs,
-                           const DLL_const_iterator<U>& rhs);
-    template<typename U>
-    friend bool operator!=(const DLL_const_iterator<U>& lhs,
-                           const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator==(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+template<typename U>
+friend bool operator!=(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs);
+
 private:
     const node* base;
 };
@@ -426,5 +507,30 @@ template<typename U>
 bool operator!=(const DLL_const_iterator<U>& lhs
                ,const DLL_const_iterator<U>& rhs)
 { return lhs.base != rhs.base; }
+
+template<typename U>
+bool operator==(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs)
+{ return lhs.base == rhs.base; }
+
+template<typename U>
+bool operator!=(const DLL_iterator<U>& lhs, const DLL_const_iterator<U>& rhs)
+{ return lhs.base != rhs.base; }
+
+template<typename U>
+bool operator==(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs)
+{ return lhs.base == rhs.base; }
+
+template<typename U>
+bool operator!=(const DLL_const_iterator<U>& lhs, const DLL_iterator<U>& rhs)
+{ return lhs.base != rhs.base; }
+
+template<typename U>
+bool operator==(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs)
+{ return lhs.base == rhs.base; }
+
+template<typename U>
+bool operator!=(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs)
+{ return lhs.base != rhs.base; }
+
 /* ------------------------------------------------------------------------- */
 #endif /* DOUBLELINKEDLIST_HPP_ */
