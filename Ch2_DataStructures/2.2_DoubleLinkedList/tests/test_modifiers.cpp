@@ -7,7 +7,7 @@
 namespace
 {
 
-class InsertTest : public ::testing::Test
+class ModifiersTest : public ::testing::Test
 {
     void SetUp() override
     {
@@ -18,7 +18,7 @@ protected:
 };
 
 
-TEST_F( InsertTest, ConstLvalue )
+TEST_F( ModifiersTest, ConstLvalue )
 {
     const int value = 42;
     f_dll.insert(f_dll.cbegin(), value);
@@ -37,7 +37,7 @@ TEST_F( InsertTest, ConstLvalue )
     ASSERT_EQ(*inserted, value);
 }
 
-TEST_F( InsertTest, Rvalue )
+TEST_F( ModifiersTest, Rvalue )
 {
     f_dll.insert(f_dll.cbegin(), 42);
     ASSERT_TRUE(ensure_invariant(f_dll));
@@ -55,7 +55,7 @@ TEST_F( InsertTest, Rvalue )
     ASSERT_EQ(*inserted, 42);
 }
 
-TEST_F( InsertTest, Range )
+TEST_F( ModifiersTest, Range )
 {
     const auto original_size = f_dll.size();
     const auto range = std::vector<int>{99,88,77,66,55,44,33};
@@ -76,6 +76,111 @@ TEST_F( InsertTest, Range )
     ASSERT_TRUE(std::equal(range.cbegin(),range.cend(),it3));
 
     ASSERT_EQ(f_dll.size(), original_size + range.size()*3);
+}
+
+TEST_F( ModifiersTest, InitializerList )
+{
+    const auto original_size = f_dll.size();
+    constexpr auto ilist = {99,88,77,66,55,44,44,22,11};
+    const auto ilist_size = std::distance(ilist.begin(),ilist.end());
+
+    auto it1 = f_dll.insert(f_dll.cbegin(), {99,88,77,66,55,44,44,22,11});
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_TRUE(std::equal(ilist.begin(), ilist.end(), it1));
+
+    auto it2 = f_dll.insert(f_dll.cend(), {99,88,77,66,55,44,44,22,11});
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_TRUE(std::equal(ilist.begin(),ilist.end(),it2));
+
+    auto ipoint = f_dll.begin();
+    std::advance(ipoint, original_size/2 + ilist_size);
+    auto it3 = f_dll.insert(ipoint, {99,88,77,66,55,44,44,22,11});
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    std::advance(ipoint, -ilist_size);
+    ASSERT_EQ(ipoint, it3);
+    ASSERT_TRUE(std::equal(ilist.begin(), ilist.end(), it3));
+}
+
+TEST_F( ModifiersTest, Emplace )
+{
+    auto lvalue = 11;
+    const auto clvalue = 42;
+
+    auto it1 = f_dll.emplace(f_dll.cbegin(), lvalue);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(*it1, lvalue);
+
+    auto it2 = f_dll.emplace(f_dll.cend(), clvalue);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(*it2, clvalue);
+
+    auto ipoint = f_dll.begin();
+    std::advance(ipoint, f_dll.size()/2);
+    auto it3 = f_dll.emplace(ipoint, lvalue+clvalue);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    std::advance(ipoint,-1);
+    ASSERT_EQ(ipoint, it3);
+    ASSERT_EQ(*ipoint, *it3);
+    ASSERT_EQ(*it3, lvalue+clvalue);
+}
+
+TEST_F( ModifiersTest, EraseSingleFirst )
+{
+    const auto original_size = f_dll.size();
+    const auto expected = *++f_dll.cbegin();
+    auto it = f_dll.erase(f_dll.cbegin());
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(expected,*it);
+    ASSERT_EQ(f_dll.size(), original_size-1);
+}
+
+// Can't use end() iterator. How do we test that?
+// TEST_F( ModifiersTest, EraseSingleLast )
+// {
+
+// }
+
+TEST_F( ModifiersTest, EraseRange )
+{
+    const auto original_size = f_dll.size();
+    auto begin = f_dll.cbegin();
+    std::advance(begin, 1);
+    auto end = f_dll.cend();
+    std::advance(end, -1);
+    const auto range_size = std::distance(begin, end);
+
+    auto it = f_dll.erase(begin, end);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(it, end);
+    ASSERT_EQ(f_dll.size(), original_size - range_size);
+}
+
+TEST_F( ModifiersTest, PushBackLvalue )
+{
+    const auto value = 42;
+    const auto original_size = f_dll.size();
+    f_dll.push_back(value);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(value, f_dll.back());
+}
+
+TEST_F( ModifiersTest, PushBackRvalue )
+{
+    const auto original_size = f_dll.size();
+    f_dll.push_back(42);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(f_dll.back(), 42);
+}
+
+TEST_F( ModifiersTest, EmplaceBack )
+{
+    const auto original_size = f_dll.size();
+    f_dll.push_back(42);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(f_dll.back(), 42);
 }
 
 } // namespace

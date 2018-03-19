@@ -127,18 +127,15 @@ public:
         if( this == &other )
             return *this;
         alloc = std::move(other.alloc);
+    // save a reference to the first element of the list
+    // and unlink the last element
         auto temp_first = head.next;
-        // auto temp_last = tail.prev;
-        // temp_last->next = nullptr;
         tail.prev->next = nullptr;
-        // while( temp_first != nullptr ){
-        //     alloc.destroy(temp_first);
-        //     alloc.deallocate(temp_first,1);
-        //     temp_first = temp_first->next;
-        // }
+    // take ownership of the other list's elements
         link_nodes(&head, {other.head.next, other.tail.prev}, &tail);
+    // leave the other list in a valid, empty state
         link_nodes(&other.head, &other.tail);
-
+    // free our old elements
         free(temp_first, nullptr);
 
         return *this;
@@ -212,17 +209,56 @@ public:
                   , const_cast<node*>(pos.base) );
         return iterator(nodes.first);
     }
-    iterator insert( const_iterator pos, std::initializer_list<T> ilist );
+    iterator insert( const_iterator pos, std::initializer_list<T> ilist )
+    {
+        auto nodes = alloc_range(ilist.begin(), ilist.end());
+        link_nodes( const_cast<node*>(pos.base->prev), nodes
+                  , const_cast<node*>(pos.base) );
+        return iterator(nodes.first);
+    }
     template<typename... Args>
-    iterator emplace( const_iterator pos, Args&&... args );
+    iterator emplace( const_iterator pos, Args&&... args )
+    {
+        auto newnode = make_node(std::forward<Args>(args)...);
+        link_nodes( const_cast<node*>(pos.base->prev), {newnode, newnode}
+                  , const_cast<node*>(pos.base) );
+        return iterator(newnode);
+    }
 
-    iterator erase( const_iterator pos );
-    iterator erase( const_iterator first, const_iterator last );
+    iterator erase( const_iterator pos )
+    { Expects(pos != cend());
+        auto target = const_cast<node*>(pos.base);
+        link_nodes(target->prev, target->next);
+        auto ret = target->next;
+        free(target);
+        return iterator(ret);
+    }
+    iterator erase( const_iterator first, const_iterator last )
+    {
+        auto begin = const_cast<node*>(first.base);
+        auto end = const_cast<node*>(last.base);
+        link_nodes(begin->prev, end);
+        free(begin, end);
+        return iterator(end);
+    }
 
-    void push_back( const T& value );
-    void push_back( T&& value );
+    void push_back( const T& value )
+    {
+        auto nn = make_node(value);
+        link_nodes(tail.prev, {nn, nn}, &tail);
+    }
+    void push_back( T&& value )
+    {
+        auto nn = make_node(std::move(value));
+        link_nodes(tail.prev, {nn,nn}, &tail);
+    }
     template<typename... Args>
-    reference emplace_back( Args&&... args );
+    reference emplace_back( Args&&... args )
+    {
+        auto nn = make_node(std::forward<Args>(args)...);
+        link_nodes(tail.prev, {nn,nn}, &tail);
+        return nn->data;
+    }
     void pop_back();
 
     void push_front( const T& value );
