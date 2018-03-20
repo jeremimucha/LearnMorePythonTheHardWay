@@ -14,7 +14,9 @@ class ModifiersTest : public ::testing::Test
         ensure_invariant(f_dll);
     }
 protected:
+    using size_type = typename DoubleLinkedList<int>::size_type;
     DoubleLinkedList<int> f_dll{0,1,2,3,4,5,6,7,8,9};
+    const size_type f_original_size{f_dll.size()};
 };
 
 
@@ -57,7 +59,6 @@ TEST_F( ModifiersTest, Rvalue )
 
 TEST_F( ModifiersTest, Range )
 {
-    const auto original_size = f_dll.size();
     const auto range = std::vector<int>{99,88,77,66,55,44,33};
     auto it1 = f_dll.insert(f_dll.cbegin(), range.cbegin(), range.cend());
     ASSERT_TRUE(ensure_invariant(f_dll));
@@ -75,12 +76,11 @@ TEST_F( ModifiersTest, Range )
     ASSERT_EQ(ipoint, it3);
     ASSERT_TRUE(std::equal(range.cbegin(),range.cend(),it3));
 
-    ASSERT_EQ(f_dll.size(), original_size + range.size()*3);
+    ASSERT_EQ(f_dll.size(), f_original_size + range.size()*3);
 }
 
 TEST_F( ModifiersTest, InitializerList )
 {
-    const auto original_size = f_dll.size();
     constexpr auto ilist = {99,88,77,66,55,44,44,22,11};
     const auto ilist_size = std::distance(ilist.begin(),ilist.end());
 
@@ -93,7 +93,7 @@ TEST_F( ModifiersTest, InitializerList )
     ASSERT_TRUE(std::equal(ilist.begin(),ilist.end(),it2));
 
     auto ipoint = f_dll.begin();
-    std::advance(ipoint, original_size/2 + ilist_size);
+    std::advance(ipoint, f_original_size/2 + ilist_size);
     auto it3 = f_dll.insert(ipoint, {99,88,77,66,55,44,44,22,11});
     ASSERT_TRUE(ensure_invariant(f_dll));
     std::advance(ipoint, -ilist_size);
@@ -126,12 +126,11 @@ TEST_F( ModifiersTest, Emplace )
 
 TEST_F( ModifiersTest, EraseSingleFirst )
 {
-    const auto original_size = f_dll.size();
     const auto expected = *++f_dll.cbegin();
     auto it = f_dll.erase(f_dll.cbegin());
     ASSERT_TRUE(ensure_invariant(f_dll));
     ASSERT_EQ(expected,*it);
-    ASSERT_EQ(f_dll.size(), original_size-1);
+    ASSERT_EQ(f_dll.size(), f_original_size-1);
 }
 
 // Can't use end() iterator. How do we test that?
@@ -142,7 +141,6 @@ TEST_F( ModifiersTest, EraseSingleFirst )
 
 TEST_F( ModifiersTest, EraseRange )
 {
-    const auto original_size = f_dll.size();
     auto begin = f_dll.cbegin();
     std::advance(begin, 1);
     auto end = f_dll.cend();
@@ -152,35 +150,110 @@ TEST_F( ModifiersTest, EraseRange )
     auto it = f_dll.erase(begin, end);
     ASSERT_TRUE(ensure_invariant(f_dll));
     ASSERT_EQ(it, end);
-    ASSERT_EQ(f_dll.size(), original_size - range_size);
+    ASSERT_EQ(f_dll.size(), f_original_size - range_size);
 }
 
 TEST_F( ModifiersTest, PushBackLvalue )
 {
     const auto value = 42;
-    const auto original_size = f_dll.size();
     f_dll.push_back(value);
     ASSERT_TRUE(ensure_invariant(f_dll));
-    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(f_dll.size(), f_original_size+1);
     ASSERT_EQ(value, f_dll.back());
 }
 
 TEST_F( ModifiersTest, PushBackRvalue )
 {
-    const auto original_size = f_dll.size();
     f_dll.push_back(42);
     ASSERT_TRUE(ensure_invariant(f_dll));
-    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(f_dll.size(), f_original_size+1);
     ASSERT_EQ(f_dll.back(), 42);
 }
 
 TEST_F( ModifiersTest, EmplaceBack )
 {
-    const auto original_size = f_dll.size();
     f_dll.push_back(42);
     ASSERT_TRUE(ensure_invariant(f_dll));
-    ASSERT_EQ(f_dll.size(), original_size+1);
+    ASSERT_EQ(f_dll.size(), f_original_size+1);
     ASSERT_EQ(f_dll.back(), 42);
+}
+
+TEST_F( ModifiersTest, PopBack )
+{
+    const auto second_to_last = [&f_dll = f_dll]{ return *----f_dll.cend(); }();
+    f_dll.pop_back();
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), f_original_size-1);
+    ASSERT_EQ(second_to_last, f_dll.back());
+}
+
+TEST_F( ModifiersTest, PushFrontLvalue )
+{
+    const auto value = 42;
+    f_dll.push_front(value);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.front(), value);
+    ASSERT_EQ(f_dll.size(), f_original_size + 1);
+}
+
+TEST_F( ModifiersTest, PushFrontRvalue )
+{
+    f_dll.push_front(42);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.front(), 42);
+    ASSERT_EQ(f_dll.size(), f_original_size + 1);
+}
+
+TEST_F( ModifiersTest, EmplaceFront )
+{
+    f_dll.emplace_front(42);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.front(), 42);
+    ASSERT_EQ(f_dll.size(), f_original_size + 1);
+}
+
+TEST_F( ModifiersTest, PopFront )
+{
+    const auto second = [&f_dll = f_dll]{ return *++f_dll.cbegin(); }();
+    f_dll.pop_front();
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), f_original_size - 1);
+    ASSERT_EQ(second, f_dll.front());
+}
+
+TEST_F( ModifiersTest, ResizeSmaller )
+{
+    const auto desired_count = 5;
+    f_dll.resize(desired_count);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), desired_count);
+}
+
+TEST_F( ModifiersTest, ResizeBigger )
+{
+    const auto desired_count = 42;
+    f_dll.resize(desired_count);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), desired_count);
+}
+
+TEST_F( ModifiersTest, ResizeEmpty )
+{
+    auto dll = DoubleLinkedList<int>{};
+    const auto original_size = dll.size();
+    ASSERT_EQ(original_size, 0);
+    const auto desired_count = 42;
+    dll.resize(desired_count, 42);
+    ASSERT_TRUE(ensure_invariant(dll));
+    ASSERT_EQ(dll.size(), desired_count);
+}
+
+TEST_F( ModifiersTest, ResizeToEmpty )
+{
+    const auto desired_count = 0;
+    f_dll.resize(desired_count);
+    ASSERT_TRUE(ensure_invariant(f_dll));
+    ASSERT_EQ(f_dll.size(), desired_count);
 }
 
 } // namespace

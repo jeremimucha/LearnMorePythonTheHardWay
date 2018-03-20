@@ -259,18 +259,77 @@ public:
         link_nodes(tail.prev, {nn,nn}, &tail);
         return nn->data;
     }
-    void pop_back();
+    void pop_back()
+    {
+        auto deleter = [this](node* np){ free(np); };
+        std::unique_ptr<node,decltype(deleter)> target{tail.prev, deleter};
+        link_nodes(tail.prev->prev, &tail);
+    }
 
-    void push_front( const T& value );
-    void push_front( T&& value );
+    void push_front( const T& value )
+    {
+        auto nn = make_node(value);
+        link_nodes(&head, {nn, nn}, head.next);
+    }
+    void push_front( T&& value )
+    {
+        auto nn = make_node(std::move(value));
+        link_nodes(&head, {nn,nn}, head.next);
+    }
     template<typename... Args>
-    reference emplace_front( Args&&... args );
-    void pop_front();
+    reference emplace_front( Args&&... args )
+    {
+        auto nn = make_node(std::forward<Args>(args)...);
+        link_nodes(&head, {nn,nn}, head.next);
+        return nn->data;
+    }
+    void pop_front()
+    {
+        auto deleter = [this](node* np){ free(np); };
+        std::unique_ptr<node,decltype(deleter)> target{head.next, deleter};
+        link_nodes(&head, head.next->next);
+    }
 
-    void resize( size_type count );
-    void resize( size_type count, const T& value );
+    void resize( size_type count )
+    {
+        self::resize(count, T{});
+    }
+    void resize( size_type count, const T& value )
+    {
+        if( count == 0 ){
+            free();
+            return;
+        }
 
-    void swap( DoubleLinkedList& other ) noexcept;
+        const auto it_and_size = [begin=head.next, end=&tail, count=count]()mutable{
+            size_type actual_size{0};
+            while( begin != end && ++actual_size != count ){
+                begin = begin->next;
+            }
+            return std::make_pair(begin, actual_size);
+        }();
+        
+        if( it_and_size.second == count ){ // more or exactly as many nodes
+        Expects(it_and_size.first != &tail);
+            // free the exces elements
+            auto target = it_and_size.first->next;
+            link_nodes(it_and_size.first, &tail);
+            free(target, &tail);
+        }
+        else{ // actual_size < desired count
+        Expects(it_and_size.first == &tail);
+            auto nodes = alloc_n(count - it_and_size.second, value);
+            link_nodes(tail.prev, nodes, &tail);
+        }
+    }
+
+    void swap( DoubleLinkedList& other ) noexcept
+    {
+        using std::swap;
+        swap(alloc, other.alloc);
+        swap(head, other.head);
+        swap(tail, other.tail);
+    }
 
     friend inline void swap( DoubleLinkedList& lhs, DoubleLinkedList& rhs ) noexcept
     {
@@ -324,7 +383,7 @@ protected:
 
     template<typename InputIt>
     std::pair<node*,node*> alloc_range( InputIt begin, InputIt end )
-    { Expects(begin != nullptr && end != nullptr);
+    {
         auto first = make_node(*begin);
         auto pred = first;
         while( ++begin != end ){
