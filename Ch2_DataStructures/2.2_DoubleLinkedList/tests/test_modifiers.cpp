@@ -7,6 +7,9 @@
 namespace
 {
 
+using detail::ensure_invariant;
+
+
 class ModifiersTest : public ::testing::Test
 {
     void SetUp() override

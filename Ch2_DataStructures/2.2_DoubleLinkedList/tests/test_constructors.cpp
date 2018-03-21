@@ -6,6 +6,8 @@
 namespace
 {
 
+using detail::ensure_invariant;
+
 class ConstructorTest : public ::testing::Test
 {
 protected:

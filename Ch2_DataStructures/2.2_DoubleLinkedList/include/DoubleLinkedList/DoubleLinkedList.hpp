@@ -21,12 +21,18 @@ using gsl::not_null;
 using gsl::owner;
 
 
-template<typename> class Node;
 template<typename> class DoubleLinkedList;
+
+
+namespace detail
+{
+
+template<typename> class Node;
 template<typename> class DLL_iterator;
 template<typename> class DLL_const_iterator;
 
-
+template<typename U>
+bool ensure_invariant( const DoubleLinkedList<U>& );
 /* DLL Node<T> */
 /* ------------------------------------------------------------------------- */
 template<typename T>
@@ -49,6 +55,8 @@ template<typename U> friend bool ensure_invariant( const DoubleLinkedList<U>& );
 };
 /* ------------------------------------------------------------------------- */
 
+} // detail
+
 
 /* DoubleLinkedList */
 /* ------------------------------------------------------------------------- */
@@ -56,8 +64,8 @@ template<typename T>
 class DoubleLinkedList
 {
     template<typename U>
-    friend bool ensure_invariant( const DoubleLinkedList<U>& );
-    using node                      = Node<T>;
+    friend bool detail::ensure_invariant( const DoubleLinkedList<U>& );
+    using node                      = detail::Node<T>;
     using Allocator                 = std::allocator<node>;
     using T_Allocator               = std::allocator<T>;
     using alloc_traits              = std::allocator_traits<Allocator>;
@@ -73,8 +81,8 @@ public:
     using difference_type           = typename T_alloc_traits::difference_type;
     using size_type                 = typename T_alloc_traits::size_type;
 
-    using iterator                  = DLL_iterator<T>;
-    using const_iterator            = DLL_const_iterator<T>;
+    using iterator                  = detail::DLL_iterator<T>;
+    using const_iterator            = detail::DLL_const_iterator<T>;
     using reverse_iterator          = std::reverse_iterator<iterator>;
     using const_reverse_iterator    = std::reverse_iterator<const_iterator>;
 
@@ -244,6 +252,10 @@ private:
     node tail{};
 };
 /* ------------------------------------------------------------------------- */
+
+namespace detail
+{
+
 class Invariant_violation_exception : public std::logic_error
 {
     using std::logic_error::logic_error;
@@ -264,6 +276,10 @@ bool ensure_invariant( const DoubleLinkedList<T>& object )
         throw Invariant_violation_exception("Empty or non-empty invariant violated");
 }
 
+} // detail
+
+namespace detail
+{
 /* DLL_iterator<T> */
 /* ------------------------------------------------------------------------- */
 template<typename T>
@@ -410,6 +426,8 @@ friend bool operator!=(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs);
 private:
     const node* base;
 };
+
+} // detail
 
 #include "DoubleLinkedList_impl.hpp"
 

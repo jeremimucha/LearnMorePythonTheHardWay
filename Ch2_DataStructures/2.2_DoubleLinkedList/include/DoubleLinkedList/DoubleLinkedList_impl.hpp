@@ -296,6 +296,8 @@ void DoubleLinkedList<T>::free( node* n ) noexcept
 }
 
 
+namespace detail
+{
 
 template<typename U>
 bool operator==(const DLL_const_iterator<U>& lhs
@@ -331,5 +333,6 @@ template<typename U>
 bool operator!=(const DLL_iterator<U>& lhs, const DLL_iterator<U>& rhs)
 { return lhs.base != rhs.base; }
 
+} // detail
 
 #endif /* DOUBLELINKEDLIST_IMPL_INCLUDED_HPP_ */
