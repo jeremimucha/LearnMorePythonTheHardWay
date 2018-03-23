@@ -2,6 +2,15 @@
 #define THREADSAFESTACK_IMPL_GUARD_HPP_
 
 
+template<typename T>
+inline bool assert_invariant( const ThreadsafeStack<T>& obj )
+{ // What's the invariant here?
+    // Stack is either empty -> head.next == nullptr
+    // Or it owns one or more nodes -> head.next != nullptr
+    if( obj.top.next == nullptr || obj.top.next != nullptr )
+        return true;
+}
+
 // --- helpers
 template<typename T>
     template<typename... Args> inline
@@ -32,8 +41,8 @@ void ThreadsafeStack<T>::free() noexcept
 template<typename T> inline
 void ThreadsafeStack<T>::free( not_null<node*> target ) noexcept
 {
-    alloc.destroy(target);
-    alloc.deallocate(target, 1);
+    alloc.destroy(target.get());
+    alloc.deallocate(target.get(), 1);
 }
 
 template<typename T> inline
@@ -54,7 +63,7 @@ void ThreadsafeStack<T>::push( const T& value )
     auto nn = make_node(value);
     std::lock_guard<mutex_type> lk{top_mutex};
     link_nodes(nn, top.next);
-    link_nodes(top.next, nn);
+    link_nodes(&top, nn);
 }
 
 template<typename T>
@@ -63,7 +72,7 @@ void ThreadsafeStack<T>::push( T&& value ) noexcept
     auto nn = make_node(std::move(value));
     std::lock_guard<mutex_type> lk{top_mutex};
     link_nodes(nn, top.next);
-    link_nodes(top.next, nn);
+    link_nodes(&top, nn);
 }
 
 template<typename T>
@@ -73,7 +82,7 @@ void ThreadsafeStack<T>::emplace( Args&&... args )
     auto nn = make_node(std::forward<Args>(args)...);
     std::lock_guard<mutex_type> lk{top_mutex};
     link_nodes(nn, top.next);
-    link_nodes(top.next, nn);
+    link_nodes(&top, nn);
 }
 
 template<typename T>
@@ -92,7 +101,7 @@ auto ThreadsafeStack<T>::wait_and_pop() noexcept -> value_type
     std::unique_lock<mutex_type> lk{top_mutex};
     top_cond.wait( lk, [this]{return !empty();} );
     auto target = top.next;
-    link_nodes(top.next, target->next);
+    link_nodes(&top, target->next);
     lk.unlock();
     return std::move(target->data);
 }
@@ -103,7 +112,7 @@ void ThreadsafeStack<T>::wait_and_pop( T& value ) noexcept
     std::unique_lock<mutex_type> lk{top_mutex};
     top_cond.wait( lk, [this]{return !empty();} );
     auto target = top.next;
-    link_nodes(top.next, target->next);
+    link_nodes(&top, target->next);
     lk.unlock();
     value = std::move(target->data);
 }
@@ -113,7 +122,7 @@ auto ThreadsafeStack<T>::unlink_top() noexcept -> node*
 { Expects(!empty());
     std::lock_guard<mutex_type> lk{top_mutex};
     auto target = top.next;
-    link_nodes(top.next, target->next);
+    link_nodes(&top, target->next);
     // link_nodes(target.next, nullptr); // necessary?
     return target;
 }

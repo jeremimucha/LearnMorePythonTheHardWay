@@ -7,6 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept>
 
 #define GSL_THROW_ON_CONTRACT_VIOLATION
 #include <gsl/gsl>
@@ -22,6 +23,9 @@ using gsl::not_null;
 
 template<typename> class ThreadsafeStack;
 template<typename> class ThreadsafeStackNode;
+
+struct Invariant_violation_exception : public std::logic_error
+{ using std::logic_error::logic_error; };
 
 template<typename T>
 inline bool assert_invariant( const ThreadsafeStack<T>& );
@@ -49,8 +53,8 @@ struct ThreadsafeStackNode
 template<typename T>
 class ThreadsafeStack
 {
-    template<typename>
-    friend bool assert_invariant( const ThreadsafeStack<T>& );
+    template<typename U>
+    friend bool assert_invariant( const ThreadsafeStack<U>& );
     using node = ThreadsafeStackNode<T>;
     using Allocator = std::allocator<node>;
     using T_Allocator = std::allocator<T>;
@@ -76,7 +80,7 @@ public:
     // using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 // --- constructors
-    ThreadsafeStack() noexcept;
+    ThreadsafeStack() noexcept = default;
 // --- No other than default constructor by design
     // explicit ThreadsafeStack( size_type count )
     //     : ThreadsafeStack(count, T{}) { }
