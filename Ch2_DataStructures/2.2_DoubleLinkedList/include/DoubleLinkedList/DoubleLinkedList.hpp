@@ -329,7 +329,7 @@ public:
         {
             auto rv = *this;
             base = base->prev;
-            return *this;
+            return rv;
         }
 
     operator const_iterator() { return const_iterator(base); }
@@ -403,7 +403,7 @@ public:
         {
             auto rv = *this;
             base = base->prev;
-            return *this;
+            return rv;
         }
     
 template<typename U>
