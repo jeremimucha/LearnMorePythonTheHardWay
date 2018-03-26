@@ -61,18 +61,22 @@ template<typename T>
 void ThreadsafeStack<T>::push( const T& value )
 {
     auto nn = make_node(value);
-    std::lock_guard<mutex_type> lk{top_mutex};
-    link_nodes(nn, top.next);
-    link_nodes(&top, nn);
+    { std::lock_guard<mutex_type> lk{top_mutex};
+        link_nodes(nn, top.next);
+        link_nodes(&top, nn);
+    }
+    top_cond.notify_one();
 }
 
 template<typename T>
 void ThreadsafeStack<T>::push( T&& value ) noexcept
 {
     auto nn = make_node(std::move(value));
-    std::lock_guard<mutex_type> lk{top_mutex};
-    link_nodes(nn, top.next);
-    link_nodes(&top, nn);
+    { std::lock_guard<mutex_type> lk{top_mutex};
+        link_nodes(nn, top.next);
+        link_nodes(&top, nn);
+    }
+    top_cond.notify_one();
 }
 
 template<typename T>
@@ -80,9 +84,11 @@ template<typename T>
 void ThreadsafeStack<T>::emplace( Args&&... args )
 {
     auto nn = make_node(std::forward<Args>(args)...);
-    std::lock_guard<mutex_type> lk{top_mutex};
-    link_nodes(nn, top.next);
-    link_nodes(&top, nn);
+    { std::lock_guard<mutex_type> lk{top_mutex};
+        link_nodes(nn, top.next);
+        link_nodes(&top, nn);
+    }
+    top_cond.notify_one();
 }
 
 template<typename T>

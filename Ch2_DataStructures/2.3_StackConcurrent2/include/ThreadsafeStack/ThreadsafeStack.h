@@ -32,7 +32,7 @@ template<typename T>
 class ThreadsafeStack
 {
     template<typename U>
-    friend bool assert_invariant( const ThreadsafeStack<U>& );
+    friend inline bool assert_invariant( const ThreadsafeStack<U>& );
     struct node;
     using Node_allocator = std::allocator<node>;
     using T_allocator = std::allocator<T>;
@@ -81,97 +81,29 @@ public:
     bool empty() const noexcept { return top == nullptr; }
 
 // --- modifiers
-    void push( const T& value )
-    {
-        auto nn = make_node(value);
-        { std::lock_guard<mutex_type> lk{top_mutex};
-            nn->next = std::move(top);
-            top = std::move(nn);
-        }
-        top_cond.notify_one();
-    }
-    void push( T&& value ) noexcept
-    {
-        auto nn = make_node(std::move(value));
-        { std::lock_guard<mutex_type> lk{top_mutex};
-            nn->next = std::move(top);
-            top = std::move(nn);
-        }
-        top_cond.notify_one();
-    }
+    inline void push( const T& value );
+
+    inline void push( T&& value ) noexcept;
 
     template<typename... Args>
-    void emplace( Args&&... args )
-    {
-        auto nn = make_node(std::forward<Args>(args)...);
-        { std::lock_guard<mutex_type> lk{top_mutex};
-            nn->next = std::move(top);
-            top = std::move(nn);
-        }
-        top_cond.notify_one();
-    }
+    inline void emplace( Args&&... args );
 
-    bool try_pop( T& value )
-    {
-        if( empty() )
-            return false;
-        auto target = unlink_top();
-        value = std::move(*target->data);
-        return true;
-    }
+    inline bool try_pop( T& value );
 
-    std::unique_ptr<T> try_pop() noexcept
-    {
-        if( empty() )
-            return nullptr;
-        auto target = unlink_top();
-        return std::move(target->data);
-    }
+    inline std::unique_ptr<T> try_pop() noexcept;
 
-    void wait_and_pop( T& value ) noexcept
-    {
-        std::unique_lock<mutex_type> lk{top_mutex};
-        top_cond.wait( lk, [this]{return !empty();} );
-        auto target = std::unique_ptr<node>(std::move(top));
-        top = std::move(target->next);
-        lk.unlock();
-        value = std::move(*target->data);
-    }
+    inline void wait_and_pop( T& value ) noexcept;
 
-    std::unique_ptr<T> wait_and_pop() noexcept
-    {
-        std::unique_lock<mutex_type> lk{top_mutex};
-        top_cond.wait( lk, [this]{return !empty();} );
-        auto target = std::unique_ptr<node>(std::move(top));
-        top = std::move(target->next);
-        return std::move(target->data);
-    }
+    inline std::unique_ptr<T> wait_and_pop() noexcept;
 
     template<typename> friend inline
-    void swap( ThreadsafeStack<T>& lhs, ThreadsafeStack<T>& rhs ) noexcept
-    {
-        using std::swap;
-        using mutex_type = typename ThreadsafeStack<T>::mutex_type;
-        std::lock(lhs.top_mutex, rhs.top_mutex);
-        std::lock_guard<mutex_type> lhslk{lhs.top_mutex, std::adopt_lock};
-        std::lock_guard<mutex_type> rhslk{rhs.top_mutex, std::adopt_lock};
-        swap(lhs.top, rhs.top);
-    }
+    void swap( ThreadsafeStack<T>& lhs, ThreadsafeStack<T>& rhs ) noexcept;
 
 protected:
     template<typename... Args> inline
-    std::unique_ptr<node> make_node( Args&&... args)
-    {
-        return std::make_unique<node>(std::forward<Args>(args)...);
-    }
+    std::unique_ptr<node> make_node( Args&&... args);
 
-    inline std::unique_ptr<node> unlink_top() noexcept
-    { Expects(!empty());
-        std::lock_guard<mutex_type> lk{top_mutex};
-        auto target = std::unique_ptr<node>{std::move(top)};
-        top = std::move(target->next);
-        return target;
-    }
+    inline std::unique_ptr<node> unlink_top() noexcept;
 
 private:
 // --- member data
