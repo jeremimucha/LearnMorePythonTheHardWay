@@ -110,7 +110,7 @@ auto ThreadsafeQueue<T>::try_pop_head() -> std::unique_ptr<node>
     std::lock_guard<mutex_type> head_lk{head_mutex};
     if(head.get() == get_tail())
         return nullptr;
-    return pop_head;
+    return pop_head();
 }
 
 template<typename T>
