@@ -33,7 +33,7 @@ class SortTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        for(auto i=0; i<20; ++i){
+        for(auto i=0; i<10000; ++i){
             f_random_list.push_back(ud(re));
         }
         ASSERT_TRUE(ensure_invariant(f_empty_list));
@@ -50,12 +50,6 @@ protected:
     DoubleLinkedList<int> f_random_list{};
 };
 
-std::ostream& operator<<(std::ostream& os, const DoubleLinkedList<int>& list)
-{
-    for( const auto i : list )
-        os << i << " ";
-    return os;
-}
 
 TEST_F( ModifiersTest, ConstLvalue )
 {
@@ -315,9 +309,7 @@ TEST_F( SortTest, MergeSortTwoElem )
 {
     ASSERT_FALSE(std::is_sorted(f_two_elem_list.cbegin(),
                     f_two_elem_list.cend()));
-    std::cout << "Before sort:\n\t" << f_two_elem_list << "\n";
     f_two_elem_list.sort_merge();
-    std::cout << "After sort:\n\t" << f_two_elem_list << "\n";
     ASSERT_TRUE(ensure_invariant(f_two_elem_list));
     ASSERT_TRUE(std::is_sorted(f_two_elem_list.cbegin(),
                     f_two_elem_list.cend()));
@@ -328,9 +320,7 @@ TEST_F( SortTest, MergeSortRandomList )
     ASSERT_FALSE(std::is_sorted(f_random_list.cbegin(),
                     f_random_list.cend()));
     const auto count_before = f_random_list.size();
-    std::cout << "Before sort:\n\t" << f_random_list << "\n";
     f_random_list.sort_merge();
-    std::cout << "After sort:\n\t" << f_random_list << "\n";
     ASSERT_TRUE(ensure_invariant(f_random_list));
     ASSERT_TRUE(std::is_sorted(f_random_list.cbegin(),
                     f_random_list.cend()));

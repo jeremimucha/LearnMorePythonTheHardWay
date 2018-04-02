@@ -210,20 +210,15 @@ auto DoubleLinkedList<T>::get_count( std::pair<node*,node*> range) noexcept -> s
 {
     auto count = size_type{0};
     while( range.first != range.second ){
-        std::cerr << "range.first = " << reinterpret_cast<void*>(range.first)
-             << ", range.second = " << reinterpret_cast<void*>(range.second)
-             << std::endl;
         ++count;
         range.first = range.first->next;
     }
-    std::cerr << __FUNCTION__ << ": " << count << std::endl;
     return count;
 }
 
 template<typename T>
 auto DoubleLinkedList<T>::get_middle( node* first, size_type count ) noexcept -> node*
 { Expects(count > 1);
-std::cerr << __FUNCTION__ << std::endl;
     --count;
     count /= 2;
     while(count--){
@@ -236,11 +231,6 @@ template<typename T>
 auto DoubleLinkedList<T>::do_merge(std::pair<node*,node*> lhs,
         std::pair<node*,node*> rhs) noexcept -> std::pair<node*,node*>
 {
-    std::cerr << __FUNCTION__ << std::endl;
-    std::cerr << "lhs.first = " << reinterpret_cast<void*>(lhs.first)
-              << ", lhs.second = " << reinterpret_cast<void*>(lhs.second)
-        << "\nrhs.first = " << reinterpret_cast<void*>(rhs.first)
-        << ", rhs.second = " << reinterpret_cast<void*>(rhs.second) << std::endl;
     auto res_begin = [&lhs, &rhs]{
                     if(lhs.first->data < rhs.first->data){
                         auto rv = lhs.first;
@@ -253,12 +243,7 @@ auto DoubleLinkedList<T>::do_merge(std::pair<node*,node*> lhs,
                     }
                   }();
     auto res_end = res_begin;
-    std::cerr <<"res_end = " << res_end->data << std::endl;
-    std::cerr << "lhs.first = " << lhs.first->data
-        << "\nrhs.first = " << rhs.first->data << std::endl;
     while( (lhs.first != lhs.second) && (rhs.first != rhs.second) ){
-        std::cerr << "lhs.first -> " << lhs.first->data
-            << "\nrhs.first -> " << rhs.first->data << std::endl;
         if( lhs.first->data < rhs.first->data ){
             link_nodes(res_end, lhs.first);
             res_end = lhs.first;
@@ -270,15 +255,11 @@ auto DoubleLinkedList<T>::do_merge(std::pair<node*,node*> lhs,
         }
     }
     while( lhs.first != lhs.second ){
-        std::cerr << "lhs.first = "
-            << (lhs.first != nullptr ? lhs.first->data : -1) << std::endl;
         link_nodes(res_end, lhs.first);
         res_end = lhs.first;
         lhs.first = lhs.first->next;
     }
     while( rhs.first != rhs.second ){
-        std::cerr << "rhs.first = "
-            << (rhs.first != nullptr ? rhs.first->data : -1) << std::endl;
         link_nodes(res_end, rhs.first);
         res_end = rhs.first;
         rhs.first = rhs.first->next;
@@ -292,16 +273,11 @@ template<typename T>
 auto DoubleLinkedList<T>::do_sort_merge( std::pair<node*,node*> range ) noexcept
      -> std::pair<node*,node*>
 {
-    std::cerr << __FUNCTION__ << std::endl;
     const auto count = get_count(range);
     if( count < 2 )
         return range;
 
     const auto midpoint = get_middle(range.first, count);
-    std::cerr << "\trange.first == " << reinterpret_cast<void*>(range.first) << std::endl;
-    std::cerr << "\tmidpoint == " << reinterpret_cast<void*>(midpoint) << std::endl;
-    std::cerr << "\tmidpoint->next == " << reinterpret_cast<void*>(midpoint->next) << std::endl;
-    std::cerr << "\trange.second == " << reinterpret_cast<void*>(range.second) << std::endl;
     auto right_begin = midpoint->next;
     midpoint->next = &tail;
     auto left = do_sort_merge({range.first, &tail});
