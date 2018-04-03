@@ -1,0 +1,8 @@
+#ifndef THREADSAFE_HASH_MAP_IMPL_H_
+#define THREADSAFE_HASH_MAP_IMPL_H_
+
+
+
+
+
+#endif /* THREADSAFE_HASH_MAP_IMPL_H_ */
