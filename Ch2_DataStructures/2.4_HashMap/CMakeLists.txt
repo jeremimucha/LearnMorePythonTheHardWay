@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.1 )
 
-set( Project HashMap )
+set( Project ThreadsafeHashMap )
 project( ${Project} )
 
 
