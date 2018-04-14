@@ -33,9 +33,9 @@ target_sources( ${PROJECT_NAME}
     )
 target_link_libraries( ${PROJECT_NAME}
     Lib::${Project}
-    Catch::Test
-    # GTest::GTest
-    # GTest::Main
+    # Catch::Test
+    GTest::GTest
+    GTest::Main
     )
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options( ${PROJECT_NAME} PUBLIC -Wall -Wextra -pedantic -Werror )
