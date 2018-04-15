@@ -128,6 +128,12 @@ public:
         node* pnode{nullptr};
     };
 
+    iterator begin() { return iterator{head}; }
+    const_iterator begin() const { return cbegin(); }
+    const_iterator cbegin() const { return const_iterator{head}; }
+    iterator end() { return iterator{}; }
+    const_iterator end() const { return cend(); }
+    const_iterator cend() const { return const_iterator{}; }
 
 // --- capacity
     bool empty() const noexcept { return head == nullptr; }
@@ -185,6 +191,8 @@ class UnorderedMap
     friend class UnorderedMap_iterator<Key,Value,Hash>;
     friend class UnorderedMap_const_iterator<Key,Value,Hash>;
     using bucket_type = UnorderedMapBucket<Key,Value>;
+    using bnode_iterator = typename bucket_type::iterator;
+    using bnode_const_iterator = typename bucket_type::const_iterator;
     using Allocator = std::allocator<bucket_type>;
     using self = UnorderedMap;
 public:
@@ -199,6 +207,8 @@ public:
     using const_pointer = const value_type*;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
+    using inner_iterator = bucket_type*;
+    using inner_const_iterator = const bucket_type*;
     using iterator = UnorderedMap_iterator<Key,Value,Hash>;
     using const_iterator = UnorderedMap_iterator<Key,Value,Hash>;
 
@@ -225,11 +235,34 @@ public:
     }
 
 protected:
+    inner_iterator ibegin() { return buckets; }
+    inner_const_iterator icbegin() const { return buckets; }
+    inner_const_iterator ibegin() const { return icbegin(); }
+    inner_iterator iend() { return buckets + count; }
+    inner_const_iterator icend() const { return buckets + count; }
+    inner_const_iterator iend() const { return icend(); }
+
     bucket_type* alloc_n(size_type n, const bucket_type& val = bucket_type{})
     {
-        auto* const bs = alloc.allocate(n);
-        std::uninitialized_fill_n(bs, n, val);
-        return bs;
+        auto* const pb = alloc.allocate(n);
+        std::uninitialized_fill_n(pb, n, val);
+        return pb;
+    }
+
+    inner_const_iterator get_bucket(const key_type& key) const
+    {
+        const auto bucket_index = hasher(key) % count;
+        auto it = icbegin();
+        std::advance(it,bucket_index);
+        return it;
+    }
+
+    inner_iterator get_bucket(const key_type& key)
+    {
+        const auto bucket_index = hasher(key) % count;
+        auto it = ibegin();
+        std::advance(it, bucket_index);
+        return it;
     }
 
     void free() noexcept
@@ -242,11 +275,218 @@ protected:
         }
     }
 
-
 private:
-    Allocator alloc{Allocator{}};
-    size_type count;
+    Allocator    alloc{Allocator{}};
+    Hash         hasher{};
+    size_type    count;
     bucket_type* buckets;
 };
+
+template<typename Key, typename Value, typename Hash>
+class UnorderedMap_iterator
+{
+    friend class UnorderedMap<Key,Value,Hash>;
+    friend class UnorderedMapBucket<Key,Value>;
+    using map_type = UnorderedMap<Key,Value,Hash>;
+    using bucket_type = typename map_type::bucket_type;
+    using self = UnorderedMap_iterator;
+    using inner_iterator = typename map_type::inner_iterator;
+    using bnode_iterator = typename map_type::bnode_iterator;
+public:
+    using value_type = typename bucket_type::value_type;
+    using reference = typename bucket_type::reference;
+    using pointer = typename bucket_type::pointer;
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = typename map_type::difference_type;
+    using const_iterator = UnorderedMap_const_iterator<Key,Value,Hash>;
+
+    UnorderedMap_iterator( inner_iterator begin_ )
+        : bucket_it{begin_}, node_it{bucket_it->begin()}
+        { }
+
+    UnorderedMap_iterator( inner_iterator begin_, bnode_iterator node )
+        : bucket_it{begin_}, node_it{node}
+        { }
+
+    reference operator*() const noexcept
+    { return *node_it; }
+
+    pointer operator->() const noexcept
+    { return &(this->operator*()); }
+
+    self& operator++() noexcept
+    { 
+        if( ++node_it == nullptr ){
+            ++bucket_it;
+            node_it = bucket_it->begin();
+        }
+        return *this;
+    }
+
+    self operator++(int) noexcept
+    {
+        const auto rv = *this;
+        ++*this;
+        return rv;
+    }
+
+    operator const_iterator() { return const_iterator{bucket_it, node_it}; }
+
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+
+private:
+    inner_iterator bucket_it;
+    bnode_iterator node_it;
+};
+
+template<typename Key, typename Value, typename Hash>
+class UnorderedMap_const_iterator
+{
+    friend class UnorderedMap<Key,Value,Hash>;
+    friend class UnorderedMapBucket<Key,Value>;
+    using map_type = UnorderedMap<Key,Value,Hash>;
+    using bucket_type = typename map_type::bucket_type;
+    using self = UnorderedMap_const_iterator;
+    using inner_iterator = typename map_type::inner_const_iterator;
+    using bnode_iterator = typename map_type::bnode_const_iterator;
+public:
+    using value_type = typename bucket_type::value_type;
+    using reference = typename bucket_type::const_reference;
+    using pointer = typename bucket_type::const_pointer;
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = typename map_type::difference_type;
+
+    UnorderedMap_const_iterator( inner_iterator begin_ )
+        : bucket_it{begin_}, node_it{bucket_it->begin()}
+        { }
+
+    UnorderedMap_const_iterator( inner_iterator begin_, bnode_iterator node )
+        : bucket_it{begin_}, node_it{node}
+        { Expects(node != nullptr); }
+
+    reference operator*() const noexcept
+    { return *node_it; }
+
+    pointer operator->() const noexcept
+    { return &(this->operator*()); }
+
+    self& operator++() noexcept
+    { 
+        if( ++node_it == nullptr ){
+            ++bucket_it;
+            node_it = bucket_it->begin();
+        }
+        return *this;
+    }
+
+    self operator++(int) noexcept
+    {
+        const auto rv = *this;
+        ++*this;
+        return rv;
+    }
+
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+template<typename K, typename V, typename H>
+friend bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
+
+private:
+    inner_iterator bucket_it;
+    bnode_iterator node_it;
+};
+
+
+template<typename K, typename V, typename H>
+inline bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it == rhs.bucket_it && */ lhs.node_it == rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it != rhs.bucket_it || */ lhs.node_it != rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it == rhs.bucket_it && */ lhs.node_it == rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it != rhs.bucket_it || */ lhs.node_it != rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator==(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it == rhs.bucket_it && */ lhs.node_it == rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator!=(const UnorderedMap_const_iterator<K,V,H>& lhs,
+                       const UnorderedMap_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it != rhs.bucket_it || */ lhs.node_it != rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator==(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it == rhs.bucket_it && */ lhs.node_it == rhs.node_it;
+}
+template<typename K, typename V, typename H>
+inline bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
+                       const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept
+{
+    return /* lhs.bucket_it != rhs.bucket_it || */ lhs.node_it != rhs.node_it;
+}
 
 #endif /* UNORDERED_MAP_GUARD_H_ */
