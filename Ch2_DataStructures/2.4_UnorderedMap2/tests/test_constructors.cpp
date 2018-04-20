@@ -17,7 +17,7 @@ class ConstructorTest : public ::testing::Test
 };
 
 
-TEST_F(ConstructorTest, Dummy)
+TEST_F(ConstructorTest, DefaultConstructor)
 {
     ASSERT_TRUE(true);
 }
