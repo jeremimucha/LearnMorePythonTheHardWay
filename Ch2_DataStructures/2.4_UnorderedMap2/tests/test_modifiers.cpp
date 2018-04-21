@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <utility>
+#include <functional>
 
 #include "UnorderedMap/UnorderedMap.h"
 
@@ -109,6 +110,22 @@ TEST_F( EraseTest, eraseByIterator )
     f_map.erase(f_map.find(value2.first));
     const auto it2 = f_map.find(value2.first);
     ASSERT_EQ(it2, f_map.end());
+    ASSERT_EQ(44-2, f_map.size());
+    assert_invariant(f_map);
+}
+
+TEST_F( EraseTest, eraseRange )
+{
+    auto it1 = f_map.find(value1.first);
+    auto it2 = f_map.find(value2.first);
+    if(std::hash<int>{}(it1->first) % 19 
+        < std::hash<int>{}(it2->first) %19){
+        f_map.erase(it1, it2);
+        ASSERT_EQ(f_map.find(value1.first), f_map.end());
+    } else {
+        f_map.erase(it2, it1);
+        ASSERT_EQ(f_map.find(value2.first), f_map.end());
+    }
     assert_invariant(f_map);
 }
 

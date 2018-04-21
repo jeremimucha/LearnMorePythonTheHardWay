@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <utility>
+#include <functional>
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
@@ -83,7 +84,7 @@ public:
     using const_pointer   = const value_type*;
     using difference_type = typename V_alloc_traits::difference_type;
     using size_type       = difference_type;
-
+    
 // --- constructors
     UnorderedMapBucket() noexcept = default;
     ~UnorderedMapBucket() noexcept { free(); }
@@ -97,6 +98,7 @@ public:
         using pointer         = const value_type*;
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
+        using bnode_type      = node;
 
         const_iterator() = default;
         explicit const_iterator(const node* pnode_)
@@ -130,6 +132,7 @@ public:
         using pointer         = value_type*;
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
+        using bnode_type      = node;
 
         iterator() = default;
         explicit iterator(node* pnode_)
@@ -418,9 +421,10 @@ public:
     iterator erase(const_iterator first, const_iterator last)
     {
         while(first != last){
-            const auto temp = erase(first);
+            auto temp = erase(first);
             first = temp;
         }
+        return iterator{first.bucket_it,first.bucket_end,first.node_it,true};
     }
 
     size_type erase(const key_type& key)
@@ -486,7 +490,10 @@ class UnorderedMap_iterator
     using bucket_type = typename map_type::bucket_type;
     using self = UnorderedMap_iterator;
     using inner_iterator = typename map_type::inner_iterator;
+    using inner_const_iterator = typename map_type::inner_const_iterator;
     using bnode_iterator = typename map_type::bnode_iterator;
+    using bnode_const_iterator = typename map_type::bnode_const_iterator;
+    using bnode_type = typename bnode_iterator::bnode_type;
 public:
     using value_type = typename bucket_type::value_type;
     using reference = typename bucket_type::reference;
@@ -560,6 +567,13 @@ friend bool operator!=(const UnorderedMap_iterator<K,V,H>& lhs,
                        const UnorderedMap_const_iterator<K,V,H>& rhs) noexcept;
 
 protected:
+    UnorderedMap_iterator( inner_const_iterator begin_, inner_const_iterator end_,
+                           bnode_const_iterator node_ , bool ensure_nonempty=false )
+        : bucket_it{const_cast<inner_iterator>(begin_)}
+        , bucket_end{const_cast<inner_iterator>(end_)}
+        , node_it{const_cast<bnode_type*>(node_.pnode)}
+        { if(ensure_nonempty) first_nonempty(); }
+
     void first_nonempty() noexcept
     {
         if(node_it.pnode) return;
