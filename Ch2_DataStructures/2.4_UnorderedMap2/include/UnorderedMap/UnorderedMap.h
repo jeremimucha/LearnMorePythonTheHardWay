@@ -19,8 +19,8 @@
 #endif
 
 
-template<typename,typename,typename> class UnorderedMap;
-template<typename,typename> class UnorderedMapBucket;
+template<typename,typename,typename,typename> class UnorderedMap;
+template<typename,typename,typename> class UnorderedMapBucket;
 template<typename,typename> struct BucketNode;
 template<typename,typename,typename> class UnorderedMap_iterator;
 template<typename,typename,typename> class UnorderedMap_const_iterator;
@@ -30,12 +30,12 @@ struct Invariant_violation_exception : public std::logic_error {
     using std::logic_error::logic_error;
 };
 
-template<typename K, typename V, typename H>
-bool assert_invariant( const UnorderedMap<K,V,H>& obj )
+template<typename K, typename V, typename H, typename A>
+bool assert_invariant( const UnorderedMap<K,V,H,A>& obj )
 {
     // invariant - every bucket contains zero, one or more nodes.
     // A bucket may contain only nodes with keys of hash values modulo bucket count
-    using size_type = typename UnorderedMap<K,V,H>::size_type;
+    using size_type = typename UnorderedMap<K,V,H,A>::size_type;
     auto* buckets = obj.buckets;
     for( size_type i=0; i<obj.count; ++i ){
         for( auto* node = buckets[i].head; node != nullptr; node = node->next ){
@@ -62,17 +62,23 @@ struct BucketNode
     value_type data;
 };
 
-template<typename Key, typename Value>
+template<typename Key, typename Value
+        ,typename Alloc=std::allocator<std::pair<const Key,Value>> >
 class UnorderedMapBucket
 {
-    template<typename K, typename V, typename H>
-    friend bool assert_invariant( const UnorderedMap<K,V,H>& );
+    template<typename K, typename V, typename H, typename A>
+    friend bool assert_invariant( const UnorderedMap<K,V,H,A>& );
     
     using node           = BucketNode<Key,Value>;
-    using Allocator      = std::allocator<node>;
-    using V_allocator    = std::allocator<typename node::value_type>;
-    using alloc_traits   = std::allocator_traits<Allocator>;
-    using V_alloc_traits = std::allocator_traits<V_allocator>;
+    using V_Allocator    = typename std::allocator_traits<Alloc>::template
+                                      rebind_alloc<std::pair<const Key, Value>>;
+    using V_alloc_traits = std::allocator_traits<V_Allocator>;
+    using Allocator      = typename V_alloc_traits::template rebind_alloc<node>;
+    using alloc_traits = std::allocator_traits<Allocator>;
+    // using Allocator      = std::allocator<node>;
+    // using V_allocator    = std::allocator<typename node::value_type>;
+    // using alloc_traits   = std::allocator_traits<Allocator>;
+    // using V_alloc_traits = std::allocator_traits<V_allocator>;
     using self           = UnorderedMapBucket;
 public:
     using value_type      = typename node::value_type;
@@ -307,17 +313,22 @@ private:
 };
 
 
-template<typename Key, typename Value, typename Hash=std::hash<Key>>
+template< typename Key, typename Value, typename Hash=std::hash<Key>
+        , typename Alloc=std::allocator<std::pair<const Key, Value>> >
 class UnorderedMap
 {
-    template<typename K, typename V, typename H>
-    friend bool assert_invariant( const UnorderedMap<K,V,H>& );
+    template<typename K, typename V, typename H, typename A>
+    friend bool assert_invariant( const UnorderedMap<K,V,H,A>& );
     friend class UnorderedMap_iterator<Key,Value,Hash>;
     friend class UnorderedMap_const_iterator<Key,Value,Hash>;
     using bucket_type = UnorderedMapBucket<Key,Value>;
     using bnode_iterator = typename bucket_type::iterator;
     using bnode_const_iterator = typename bucket_type::const_iterator;
-    using Allocator = std::allocator<bucket_type>;
+    using V_Allocator = typename std::allocator_traits<Alloc>::template
+                                    rebind_alloc<std::pair<const Key, Value>>;
+    using V_alloc_traits = std::allocator_traits<V_Allocator>;
+    // using Allocator = std::allocator<bucket_type>;
+    using Allocator = typename V_alloc_traits::template rebind_alloc<bucket_type>;
     using self = UnorderedMap;
 public:
     using allocator_type = Allocator;
