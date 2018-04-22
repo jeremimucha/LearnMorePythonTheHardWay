@@ -69,10 +69,14 @@ class UnorderedMapBucket
     friend bool assert_invariant( const UnorderedMap<K,V,H>& );
     
     using node           = BucketNode<Key,Value>;
-    using Allocator      = std::allocator<node>;
-    using V_allocator    = std::allocator<typename node::value_type>;
-    using alloc_traits   = std::allocator_traits<Allocator>;
-    using V_alloc_traits = std::allocator_traits<V_allocator>;
+    using V_Allocator    = std::allocator<std::pair<const Key,Value>>;
+    using V_alloc_traits = std::allocator_traits<V_Allocator>;
+    using Allocator      = typename V_alloc_traits::template rebind_alloc<node>;
+    using alloc_traits = std::allocator_traits<Allocator>;
+    // using Allocator      = std::allocator<node>;
+    // // using V_allocator    = std::allocator<typename node::value_type>;
+    // using alloc_traits   = std::allocator_traits<Allocator>;
+    // using V_alloc_traits = std::allocator_traits<V_allocator>;
     using self           = UnorderedMapBucket;
 public:
     using value_type      = typename node::value_type;
@@ -317,7 +321,10 @@ class UnorderedMap
     using bucket_type = UnorderedMapBucket<Key,Value>;
     using bnode_iterator = typename bucket_type::iterator;
     using bnode_const_iterator = typename bucket_type::const_iterator;
-    using Allocator = std::allocator<bucket_type>;
+    using V_Allocator = std::allocator<std::pair<const Key, Value>>;
+    using V_alloc_traits = std::allocator_traits<V_Allocator>;
+    // using Allocator = std::allocator<bucket_type>;
+    using Allocator = typename V_alloc_traits::template rebind_alloc<bucket_type>;
     using self = UnorderedMap;
 public:
     using allocator_type = Allocator;
