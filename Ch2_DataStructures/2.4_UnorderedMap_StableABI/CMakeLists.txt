@@ -65,7 +65,7 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 ###############################################################################
 
 add_library( ${PROJECT_NAME}
-    SHARED      # STATIC or SHARED
+    STATIC      # STATIC or SHARED
     ${LibrarySources}
     )
 add_library( Lib::${PROJECT_NAME}

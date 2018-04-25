@@ -25,7 +25,7 @@ TEST_F(IteratorTest, SingleElem)
     const auto value = std::make_pair(42, "Fourty Two");
     map.insert(value);
     ASSERT_FALSE(map.empty());
-    ASSERT_EQ(1, map.size());
+    ASSERT_EQ(1u, map.size());
     auto begin = map.begin();
     auto cbegin = map.cbegin();
     ASSERT_EQ(begin, cbegin);
@@ -46,7 +46,7 @@ TEST_F(IteratorTest, TwoElems)
     map.insert(value2);
     // assert_invariant(map);
     ASSERT_FALSE(map.empty());
-    ASSERT_EQ(2, map.size());
+    ASSERT_EQ(2u, map.size());
     auto begin = map.begin();
     auto cbegin = map.cbegin();
     ASSERT_EQ(begin, cbegin);

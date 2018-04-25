@@ -14,7 +14,7 @@ protected:
     void SetUp() override
     {
         ASSERT_TRUE(f_map.empty());
-        ASSERT_EQ(f_map.size(), 0);
+        ASSERT_EQ(f_map.size(), 0u);
         f_map.insert({0,"Zero"});
         f_map.insert({1,"One"});
         f_map.insert({2,"Two"});

@@ -229,8 +229,10 @@ protected:
     template<typename... Args>
     node* make_node( Args&&... args )
     {
-        auto* const nn = alloc.allocate(1);
-        alloc.construct(nn, std::forward<Args>(args)...);
+        // auto* const nn = alloc.allocate(1);
+        auto* const nn = alloc_traits::allocate(alloc, 1);
+        // alloc.construct(nn, std::forward<Args>(args)...);
+        alloc_traits::construct(alloc, nn, std::forward<Args>(args)...);
         return nn;
     }
 
@@ -247,8 +249,10 @@ protected:
 
     void free(node* target) noexcept
     { Expects(target);
-        alloc.destroy(target);
-        alloc.deallocate(target, 1);
+        // alloc.destroy(target);
+        // alloc.deallocate(target, 1);
+        alloc_traits::destroy(alloc, target);
+        alloc_traits::deallocate(alloc, target, 1);
     }
 
     void free(node* first, node* last) noexcept
@@ -423,7 +427,8 @@ protected:
 
     bucket_type* alloc_n(size_type n, const bucket_type& val=bucket_type{})
     {
-        auto* const pb = alloc.allocate(n);
+        // auto* const pb = alloc.allocate(n);
+        auto* const pb = alloc_traits::allocate(alloc, n);
         std::uninitialized_fill_n(pb, n, val);
         return pb;
     }
@@ -447,9 +452,11 @@ protected:
     {
         if(buckets){
             for(auto* p = buckets+count; p != buckets;){
-                alloc.destroy(--p);
+                // alloc.destroy(--p);
+                alloc_traits::destroy(alloc, --p);
             }
-            alloc.deallocate(buckets, count);
+            // alloc.deallocate(buckets, count);
+            alloc_traits::deallocate(alloc, buckets, count);
         }
     }
 
@@ -505,7 +512,7 @@ public:
     self& operator++() noexcept
     {
         if(bucket_it != bucket_end){
-            if( !node || !(node = static_cast<bucket_node_type*>(node->next)) ){
+            if( !node || (node = static_cast<bucket_node_type*>(node->next)) == nullptr ){
                 while(++bucket_it != bucket_end && !bucket_it->head.next)
                     ;
                 if(bucket_it != bucket_end)
@@ -613,7 +620,7 @@ public:
     self& operator++() noexcept
     {
         if(bucket_it != bucket_end){
-            if( !node || !(node = static_cast<bucket_node_type*>(node->next)) ){
+            if( !node || (node = static_cast<bucket_node_type*>(node->next)) == nullptr ){
                 while(++bucket_it != bucket_end && !bucket_it->head.next)
                     ;
                 if(bucket_it != bucket_end)

@@ -30,7 +30,7 @@ protected:
         f_map.insert(value2);
 
         assert_invariant(f_map);
-        ASSERT_EQ(f_map.size(), 44);
+        ASSERT_EQ(f_map.size(), 44u);
         ASSERT_NE(f_map.find(value1.first), f_map.cend());
         ASSERT_NE(f_map.find(value2.first), f_map.cend());
     }
@@ -48,7 +48,7 @@ TEST_F( InsertTest, insertLvalue )
     f_map.insert(value1);
     f_map.insert(value2);
     assert_invariant(f_map);
-    ASSERT_EQ(2, f_map.size());
+    ASSERT_EQ(2u, f_map.size());
     auto it1 = std::find_if(f_map.cbegin(), f_map.cend(),
                 [&value1](const auto& val){return value1.first == val.first;});
     ASSERT_NE(it1, f_map.cend());
@@ -107,7 +107,7 @@ TEST_F( EraseTest, eraseByIterator )
     f_map.erase(f_map.find(value2.first));
     const auto it2 = f_map.find(value2.first);
     ASSERT_EQ(it2, f_map.end());
-    ASSERT_EQ(44-2, f_map.size());
+    ASSERT_EQ(static_cast<std::size_t>(44-2), f_map.size());
     assert_invariant(f_map);
 }
 
