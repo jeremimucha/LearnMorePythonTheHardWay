@@ -372,6 +372,20 @@ public:
 
 // --- modifiers
 
+    mapped_type& operator[](const key_type& key)
+    {
+        auto bucket_it = get_bucket(key);
+        auto* const node = bucket_it->insert({key,mapped_type{}}).first;
+        return node->data.second;
+    }
+
+    const mapped_type& operator[](const key_type& key) const
+    {
+        const auto bucket_it = get_bucket(key);
+        const auto* const node = bucket_it->insert({key,mapped_type{}}).first;
+        return node->data.second;
+    }
+
     std::pair<iterator,bool> insert(const value_type& value)
     {
         auto bucket = get_bucket(value.first);

@@ -6,7 +6,7 @@
 
 namespace
 {
-
+using namespace std::string_literals;
 
 class InsertTest : public ::testing::Test {
 protected:
@@ -40,6 +40,46 @@ protected:
     std::pair<int,std::string> value2{144, "One hundred fourty four"};
 };
 
+TEST_F( InsertTest, opBracketsEmptyMap )
+{
+    const auto value1 = std::make_pair(42, "Fourty Two"s);
+    f_map[value1.first] = value1.second;
+    assert_invariant(f_map);
+    const auto it1 = f_map.find(value1.first);
+    ASSERT_NE(it1, f_map.end());
+    ASSERT_EQ(it1->first, value1.first);
+    ASSERT_EQ(it1->second, value1.second);
+
+    const auto value2 = std::make_pair(11, "Eleven"s);
+    f_map[value2.first] = value2.second;
+    assert_invariant(f_map);
+    const auto it2 = std::find_if(f_map.cbegin(), f_map.cend(),
+                [&key=value2.first](const auto& val){return key == val.first;});
+    ASSERT_NE(it2, f_map.cend());
+    ASSERT_EQ(it2->first, value2.first);
+    ASSERT_EQ(it2->second, value2.second);
+}
+
+TEST_F( InsertTest, opBracketsChangeValue )
+{
+    const auto value1 = std::make_pair(42, "Fourty Two"s);
+    const auto value2 = std::make_pair(11, "Eleven"s);
+    f_map[value1.first] = value1.second;
+    f_map[value2.first] = value2.second;
+    assert_invariant(f_map);
+
+    // swap the values;
+    f_map[value1.first] = value2.second;
+    assert_invariant(f_map);
+    const auto it1 = f_map.find(value1.first);
+    ASSERT_EQ(it1->first, value1.first);
+    ASSERT_EQ(it1->second, value2.second);
+    
+    f_map[value2.first] = value1.second;
+    const auto it2 = f_map.find(value2.first);
+    ASSERT_EQ(it2->first, value2.first);
+    ASSERT_EQ(it2->second, value1.second);
+}
 
 TEST_F( InsertTest, insertLvalue )
 {

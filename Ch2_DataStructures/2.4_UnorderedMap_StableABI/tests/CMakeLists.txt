@@ -43,8 +43,22 @@ endif()
 if( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
 	target_compile_options( ${PROJECT_NAME} PRIVATE /W4 /WX )
 endif()
-
-
+add_executable( profile profile.cpp )
+target_sources( profile
+    PUBLIC ${TestSources}
+    )
+target_link_libraries( profile
+    Lib::${Project}
+    # Catch::Test
+    GTest::GTest
+    GTest::Main
+    )
+if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
+    target_compile_options( profile PUBLIC -Wall -Wextra -pedantic -Werror)
+endif()
+if( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
+	target_compile_options( profile PRIVATE /W4 /WX )
+endif()
 ###############################################################################
 # CTest
 
