@@ -17,11 +17,11 @@
 #endif
 
 
-template<typename,typename,typename> class BinaryTree;
-template<typename,typename> struct BinaryTreeNode;
+
+/* Iterator - forward declarations */
+/* ------------------------------------------------------------------------- */
 template<typename,typename> class BinaryTree_iterator_base;
 template<typename,typename,typename> class BinaryTree_iterator;
-template<typename,typename,typename> class BinaryTree_const_iterator;
 
 struct inorder_tag{};
 struct preorder_tag{};
@@ -33,6 +33,7 @@ template<> struct BinaryTree_iterator_trait<inorder_tag>
 { using tag = inorder_tag; };
 template<> struct BinaryTree_iterator_trait<postorder_tag>
 { using tag = postorder_tag; };
+/* ------------------------------------------------------------------------- */
 
 /* BinaryTreeNode */
 /* ------------------------------------------------------------------------- */
@@ -80,16 +81,13 @@ public:
     using size_type       = typename alloc_traits::size_type;
     using node_type       = node;
 
-    // using iterator = BinaryTree_iterator<Key,Value,Alloc>;
-    // using const_iterator = BinaryTree_const_iterator<Key,Value,Alloc>;
-    // using iterator = BinaryTree_iterator_base<node*, reference>;
-    // using const_iterator = BinaryTree_iterator_base<const node*, const_reference>;
     using iterator = BinaryTree_iterator<node*, reference, BinaryTree_iterator_trait<void>>;
     using const_iterator = BinaryTree_iterator<const node*, const_reference, BinaryTree_iterator_trait<void>>;
     using inorder_iterator = BinaryTree_iterator<node*, reference, inorder_tag>;
     using const_inorder_iterator = BinaryTree_iterator<const node*, const_reference, inorder_tag>;
     using postorder_iterator = BinaryTree_iterator<node*, reference, postorder_tag>;
     using const_postorder_iterator = BinaryTree_iterator<const node*, const_reference, postorder_tag>;
+
     explicit BinaryTree() noexcept = default;
     ~BinaryTree() noexcept { free(); }
 
@@ -296,11 +294,6 @@ protected:
 
     void free() noexcept
     {
-        // auto free_node = [this](node* target){
-        //     alloc_traits::destroy(alloc, target);
-        //     alloc_traits::deallocate(alloc, target, 1);
-        //     };
-        // if(root) traverse_inorder(root, free_node);
         std::stack<node*> nodes;
         for(auto* target = root; target != nullptr;){
             auto* const temp = target;
@@ -314,6 +307,7 @@ protected:
             free(temp);
         }
     }
+
 private:
     Allocator alloc{Allocator{}};
     node* root{nullptr};
@@ -354,31 +348,7 @@ public:
     pointer operator->() const noexcept
     { return &(self::operator*()); }
 
-    // self& operator++() noexcept
-    // {
-    //     if(current->right)
-    //         node_stack.push(current->right);
-    //     current = current->left;
-    //     if(!current && !node_stack.empty()){
-    //         current = node_stack.top();
-    //         node_stack.pop();
-    //     } // else == end iterator
-    //     return *this;
-    // }
-
-    // self operator++(int) noexcept
-    // {
-    //     auto ret = *this;
-    //     ++*this;
-    //     return ret;
-    // }
-
-template<typename NP1, typename R1, typename NP2, typename R2>
-friend bool operator==( const BinaryTree_iterator_base<NP1,R1>& lhs,
-                        const BinaryTree_iterator_base<NP2,R2>& rhs ) noexcept;
-template<typename NP1, typename R1, typename NP2, typename R2>
-friend bool operator!=( const BinaryTree_iterator_base<NP1,R1>& lhs,
-                        const BinaryTree_iterator_base<NP2,R2>& rhs ) noexcept;
+// --- implement operator++ in the derived classes
 
 template<typename T1, typename NP1, typename R1, typename T2, typename NP2, typename R2>
 friend bool operator==( const BinaryTree_iterator<T1,NP1,R1>& lhs,
@@ -392,25 +362,16 @@ protected:
     node*      current;
 };
 
-template<typename NP1, typename R1, typename NP2, typename R2>
-bool operator==( const BinaryTree_iterator_base<NP1,R1>& lhs,
-                        const BinaryTree_iterator_base<NP2,R2>& rhs ) noexcept
+
+template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
+bool operator==( const BinaryTree_iterator<NP1,R1,T1>& lhs,
+                        const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept
 { return lhs.current == rhs.current && lhs.node_stack.empty() == rhs.node_stack.empty(); }
-template<typename NP1, typename R1, typename NP2, typename R2>
-bool operator!=( const BinaryTree_iterator_base<NP1,R1>& lhs,
-                        const BinaryTree_iterator_base<NP2,R2>& rhs ) noexcept
+template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
+bool operator!=( const BinaryTree_iterator<NP1,R1,T1>& lhs,
+                        const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept
 { return lhs.current != rhs.current /* && lhs.node_stack.empty() == rhs.node_stack.empty() */; }
 
-// struct inorder_tag{};
-// struct preorder_tag{};
-// struct postorder_tag{};
-
-// template<typename T> struct BinaryTree_iterator_trait
-// { using tag = preorder_tag; };
-// template<> struct BinaryTree_iterator_trait<inorder_tag>
-// { using tag = inorder_tag; };
-// template<> struct BinaryTree_iterator_trait<postorder_tag>
-// { using tag = postorder_tag; };
 
 template<typename NodePointer, typename Reference, typename Tag=preorder_tag>
 class BinaryTree_iterator : public BinaryTree_iterator_base<NodePointer, Reference>
@@ -437,23 +398,7 @@ public:
         ++*this;
         return ret;
     }
-
-// template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
-// friend bool operator==( const BinaryTree_iterator<NP1,R1,T1>& lhs,
-//                         const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept;
-// template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
-// friend bool operator!=( const BinaryTree_iterator<NP1,R1,T1>& lhs,
-//                         const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept;
 };
-
-template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
-bool operator==( const BinaryTree_iterator<NP1,R1,T1>& lhs,
-                        const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept
-{ return lhs.current == rhs.current && lhs.node_stack.empty() == rhs.node_stack.empty(); }
-template<typename NP1, typename R1, typename T1, typename NP2, typename R2, typename T2>
-bool operator!=( const BinaryTree_iterator<NP1,R1,T1>& lhs,
-                        const BinaryTree_iterator<NP2,R2,T2>& rhs ) noexcept
-{ return lhs.current != rhs.current /* && lhs.node_stack.empty() == rhs.node_stack.empty() */; }
 
 
 template<typename NodePointer, typename Reference>
@@ -499,6 +444,7 @@ public:
     }
 };
 
+
 template<typename NodePointer, typename Reference>
 class BinaryTree_iterator<NodePointer,Reference,postorder_tag>
     : public BinaryTree_iterator_base<NodePointer,Reference>
@@ -540,186 +486,6 @@ public:
         return ret;
     }
 };
-
-// template<typename Key,typename Value, typename Alloc>
-// class BinaryTree_iterator
-// {
-//     using container = BinaryTree<Key,Value,Alloc>;
-//     using node = typename container::node;
-//     using self = BinaryTree_iterator;
-//     using stack_type = std::stack<node*>;
-// public:
-//     using value_type = typename container::value_type;
-//     using reference  = typename container::reference;
-//     using pointer    = typename container::pointer;
-//     using iterator_category = std::forward_iterator_tag;
-//     using difference_type = typename container::difference_type;
-//     using const_iterator = BinaryTree_const_iterator<Key,Value,Alloc>;
-
-//     BinaryTree_iterator() = default;
-//     explicit BinaryTree_iterator( node* n )
-//         : nodes{}, current{n} { }
-
-//     reference operator*() const noexcept
-//     { return current->data; }
-
-//     pointer operator->() const noexcept
-//     { return &(self::operator*()); }
-
-//     self& operator++() noexcept
-//     {
-//         if(current->right)
-//             nodes.push(current->right);
-//         current = current->left;
-//         if(!current && !nodes.empty()){
-//             current = nodes.top();
-//             nodes.pop();
-//         } // else == end iterator
-//         return *this;
-//     }
-
-//     self operator++(int) noexcept
-//     {
-//         auto ret = *this;
-//         ++*this;
-//         return ret;
-//     }
-
-//     operator const_iterator() const noexcept
-//     { return const_iterator{current}; }
-
-
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-
-// private:
-//     stack_type nodes;
-//     node*      current{nullptr};
-// };
-
-// template<typename Key,typename Value, typename Alloc>
-// class BinaryTree_const_iterator
-// {
-//     using container = BinaryTree<Key,Value,Alloc>;
-//     using node = const typename container::node;
-//     using self = BinaryTree_const_iterator;
-//     using stack_type = std::stack<node*>;
-// public:
-//     using value_type = typename container::value_type;
-//     using reference  = typename container::const_reference;
-//     using pointer    = typename container::const_pointer;
-//     using iterator_category = std::forward_iterator_tag;
-//     using difference_type = typename container::difference_type;
-
-//     BinaryTree_const_iterator() = default;
-//     explicit BinaryTree_const_iterator( node* n )
-//         : nodes{}, current{n} { }
-
-//     reference operator*() const noexcept
-//     { return current->data; }
-
-//     pointer operator->() const noexcept
-//     { return &(self::operator*()); }
-
-//     self& operator++() noexcept
-//     {
-//         if(current->right)
-//             nodes.push(current->right);
-//         current = current->left;
-//         if(!current && !nodes.empty()){
-//             current = nodes.top();
-//             nodes.pop();
-//         } // else == end iterator
-//         return *this;
-//     }
-
-//     self operator++(int) noexcept
-//     {
-//         auto ret = *this;
-//         ++*this;
-//         return ret;
-//     }
-
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator==( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-// template<typename K, typename V, typename A>
-// friend bool operator!=( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                         const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept;
-
-// private:
-//     stack_type nodes;
-//     node*      current{nullptr};
-// };
-
-
-// template<typename K, typename V, typename A>
-// bool operator==( const BinaryTree_iterator<K,V,A>& lhs,
-//                  const BinaryTree_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current == rhs.current && lhs.nodes.empty() == rhs.nodes.empty(); }
-
-// template<typename K, typename V, typename A>
-// bool operator!=( const BinaryTree_iterator<K,V,A>& lhs,
-//                  const BinaryTree_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current != rhs.current /* || lhs.nodes.empty() != rhs.nodes.empty() */; }
-
-// template<typename K, typename V, typename A>
-// bool operator==( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                  const BinaryTree_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current == rhs.current && lhs.nodes.empty() == rhs.nodes.empty(); }
-
-// template<typename K, typename V, typename A>
-// bool operator!=( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                  const BinaryTree_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current != rhs.current /* || lhs.nodes.empty() != rhs.nodes.empty() */; }
-
-// template<typename K, typename V, typename A>
-// bool operator==( const BinaryTree_iterator<K,V,A>& lhs,
-//                  const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current == rhs.current && lhs.nodes.empty() == rhs.nodes.empty(); }
-
-// template<typename K, typename V, typename A>
-// bool operator!=( const BinaryTree_iterator<K,V,A>& lhs,
-//                  const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current != rhs.current /* || lhs.nodes.empty() != rhs.nodes.empty() */; }
-
-// template<typename K, typename V, typename A>
-// bool operator==( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                  const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current == rhs.current && lhs.nodes.empty() == rhs.nodes.empty(); }
-
-// template<typename K, typename V, typename A>
-// bool operator!=( const BinaryTree_const_iterator<K,V,A>& lhs,
-//                  const BinaryTree_const_iterator<K,V,A>& rhs ) noexcept
-// { return lhs.current != rhs.current /* || lhs.nodes.empty() != rhs.nodes.empty() */; }
 
 
 /* ------------------------------------------------------------------------- */
