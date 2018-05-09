@@ -81,12 +81,20 @@ public:
     using size_type       = typename alloc_traits::size_type;
     using node_type       = node;
 
-    using iterator = BinaryTree_iterator<node*, reference, BinaryTree_iterator_trait<void>>;
-    using const_iterator = BinaryTree_iterator<const node*, const_reference, BinaryTree_iterator_trait<void>>;
-    using inorder_iterator = BinaryTree_iterator<node*, reference, inorder_tag>;
-    using const_inorder_iterator = BinaryTree_iterator<const node*, const_reference, inorder_tag>;
-    using postorder_iterator = BinaryTree_iterator<node*, reference, postorder_tag>;
-    using const_postorder_iterator = BinaryTree_iterator<const node*, const_reference, postorder_tag>;
+    using iterator 
+          = BinaryTree_iterator<node*, reference, BinaryTree_iterator_trait<preorder_tag>>;
+    using const_iterator
+          = BinaryTree_iterator<const node*, const_reference, BinaryTree_iterator_trait<void>>; // same as preorder_tag
+    
+    using inorder_iterator
+          = BinaryTree_iterator<node*, reference, inorder_tag>;
+    using const_inorder_iterator
+          = BinaryTree_iterator<const node*, const_reference, inorder_tag>;
+
+    using postorder_iterator
+          = BinaryTree_iterator<node*, reference, postorder_tag>;
+    using const_postorder_iterator
+          = BinaryTree_iterator<const node*, const_reference, postorder_tag>;
 
     explicit BinaryTree() noexcept = default;
     ~BinaryTree() noexcept { free(); }
@@ -124,44 +132,61 @@ public:
     const_postorder_iterator postorder_end() const { return cend(); }
     const_postorder_iterator postorder_cend() const { return const_postorder_iterator{}; }
 
-    std::pair<node_type*,bool> insert(const value_type& value)
+    std::pair<iterator,bool> insert(const value_type& value)
     {
         if(root == nullptr){
             auto* const nn = make_node(value);
             root = nn;
-            return {root, true};
+            return {iterator{root}, true};
         }
-        for( auto* target = root; target != nullptr; /**/ ){
-            if(value.first < target->data.first){
-                if(target->left == nullptr){
-                    auto* const nn = make_node(value);
-                    target->left = nn;
-                    return {target->left, true};
-                }
-                target = target->left;
+
+        auto predicate = [&key=value.first](const node* n){
+            if(key < n->data.first){
+                if(!n->left) return Cmp::EQ;
+                else return Cmp::LT;
             }
-            else if(target->data.first < value.first){
-                if(target->right == nullptr){
-                    auto* const nn = make_node(value);
-                    target->right = nn;
-                    return {target->right, true};
-                }
-                target = target->right;
+            else if(n->data.first < key){
+                if(!n->right) return Cmp::EQ;
+                else return Cmp::GT;
             }
-            else // target->data.first == value.first
-                return {target, false};
+            else return Cmp::EQ;
+        };
+
+        auto* const parent = find_node(predicate);
+        if(!parent->left && value.first < parent->data.first){
+            auto* const nn = make_node(value);
+            parent->left = nn;
+            return {iterator{parent->left}, true};
         }
-        return {nullptr, false};
+        else if(!parent->right && parent->data.first < value.first){
+            auto* const nn = make_node(value);
+            parent->right = nn;
+            return {iterator{parent->right}, true};
+        }
+        return {iterator{parent}, false};
     }
 
-    node_type* find(const key_type& key) noexcept
+    iterator find(const key_type& key) noexcept
     {
-        auto pred = [&key](const node* n){
+        return find_impl(*this, key);
+    }
+
+    const_iterator find(const key_type& key) const noexcept
+    {
+        return find_impl(*this, key);
+    }
+
+    template<typename T>
+    static auto find_impl(T& obj, const key_type& key) -> decltype(obj.find(key))
+    {
+        // using result_type = std::result_of_t<T(key_type)>;
+        using result_type = decltype(obj.find(key));
+        auto predicate = [&key](const node* n){
             if(key < n->data.first) return Cmp::LT;
             if(n->data.first < key) return Cmp::GT;
-            return Cmp::EQ;
+            else return Cmp::EQ;
         };
-        return find_node(pred);
+        return result_type{find_node(predicate)};
     }
 
 protected:
@@ -173,6 +198,24 @@ protected:
         auto* const nn = alloc_traits::allocate(alloc, 1);
         alloc_traits::construct(alloc, nn, std::forward<Args>(args)...);
         return nn;
+    }
+
+// --- not needed - same functionality as find_node with appropriate predicate
+    node* find_parent_for(const key_type& key)
+    {
+        for( auto* target = root; target != nullptr; /**/ ){
+            if(key < target->data.first){
+                if(!target->left) return target;
+                else target = target->left;
+            }
+            else if( target->data.first < key ){
+                if(!target->right) return target;
+                else target = target->right;
+            }
+            else return target; // key == target->data.first
+        }
+        Ensures(false); // should never reach this point
+        return nullptr;
     }
 
     template<typename Function>
@@ -223,10 +266,14 @@ protected:
     {
         for( auto* target = obj.root; target != nullptr; /**/ ){
             const auto res = predicate(target);
-            if(res == Cmp::EQ) return target;
-            if(res == Cmp::LT) target = target->left;
-            else if(res == Cmp::GT) target = target->right;
+            switch(res){
+                case Cmp::EQ : return target;
+                case Cmp::LT : target = target->left; break;
+                case Cmp::GT : target = target->right; break;
+                default      : assert(false); break;
+            }
         }
+        Ensures(false);
         return nullptr;
     }
 
@@ -321,15 +368,15 @@ template<typename NodePointer, typename Reference>
 class BinaryTree_iterator_base
 {
 protected:
-    using self = BinaryTree_iterator_base;
-    using node = std::remove_pointer_t<NodePointer>;
-    using stack_type = std::stack<node*>;
+    using self              = BinaryTree_iterator_base;
+    using node              = std::remove_pointer_t<NodePointer>;
+    using stack_type        = std::stack<node*>;
 public:
-    using value_type = std::remove_cv_t< std::remove_reference_t<Reference> >;
-    using reference = Reference;
-    using pointer = std::add_pointer_t< std::remove_reference_t<Reference> >;
+    using value_type        = std::remove_cv_t< std::remove_reference_t<Reference> >;
+    using reference         = Reference;
+    using pointer           = std::add_pointer_t< std::remove_reference_t<Reference> >;
     using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
+    using difference_type   = std::ptrdiff_t;
 
     BinaryTree_iterator_base() = default;
 
@@ -359,7 +406,7 @@ friend bool operator!=( const BinaryTree_iterator<T1,NP1,R1>& lhs,
 
 protected:
     stack_type node_stack;
-    node*      current;
+    node*      current{nullptr};
 };
 
 
