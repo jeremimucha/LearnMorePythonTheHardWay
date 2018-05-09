@@ -1,9 +1,15 @@
+#include <chrono>
+#include <random>
 #include "gtest/gtest.h"
 #include "BinaryTree/BinaryTree.h"
 
 
 namespace
 {
+
+std::uniform_int_distribution<> ud;
+std::default_random_engine re{
+    static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count())};
 
 
 class ModifiersTest : public ::testing::Test
@@ -51,5 +57,22 @@ TEST_F(ModifiersTest, InsertTest)
     ASSERT_EQ(res3.first->second, value3.second);
 }
 
+TEST_F(ModifiersTest, InsertResultTest)
+{
+    for(int i=0; i<100; ++i){
+        const auto num = ud(re);
+        f_tree.insert({num, std::to_string(num)});
+    }
+    const auto value = std::make_pair(42, "Fourty Two");
+    auto res = f_tree.insert(value);
+    ASSERT_TRUE(res.second);
+    auto it = res.first;
+    auto endit = f_tree.end();
+    ASSERT_NE(it, endit);
+    auto count = unsigned{0};
+    for(; it!=endit; ++it)
+        ++count;
+    ASSERT_NE(count, 0u);
+}
 
 } // namespace

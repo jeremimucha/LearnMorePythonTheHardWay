@@ -63,12 +63,11 @@ class BinaryTree
 {
     template<typename,typename> friend class BinaryTree_iterator_base;
     template<typename,typename,typename> friend class BinaryTree_iterator;
-    template<typename,typename,typename> friend class BinaryTree_const_iterator;
-    using self = BinaryTree;
-    using node = BinaryTreeNode<const Key,Value>;
-    using Allocator = typename std::allocator_traits<Alloc>::template
-                        rebind_alloc<node>;
-    using alloc_traits = std::allocator_traits<Allocator>;
+    using self            = BinaryTree;
+    using node            = BinaryTreeNode<const Key,Value>;
+    using Allocator       = typename std::allocator_traits<Alloc>::template
+                            rebind_alloc<node>;
+    using alloc_traits    = std::allocator_traits<Allocator>;
 public:
     using value_type      = std::pair<const Key,Value>;
     using key_type        = Key;
@@ -156,14 +155,14 @@ public:
         if(!parent->left && value.first < parent->data.first){
             auto* const nn = make_node(value);
             parent->left = nn;
-            return {iterator{parent->left}, true};
+            return {iterator{root, parent->left}, true};
         }
         else if(!parent->right && parent->data.first < value.first){
             auto* const nn = make_node(value);
             parent->right = nn;
-            return {iterator{parent->right}, true};
+            return {iterator{root, parent->right}, true};
         }
-        return {iterator{parent}, false};
+        return {iterator{root, parent}, false};
     }
 
     iterator find(const key_type& key) noexcept
@@ -186,11 +185,11 @@ public:
             if(n->data.first < key) return Cmp::GT;
             else return Cmp::EQ;
         };
-        return result_type{find_node(predicate)};
+        return result_type{obj.root, find_node(predicate)};
     }
 
 protected:
-    enum class Cmp{ LT, LE, EQ, GE, GT};
+    enum class Cmp{ LT, LE, EQ, GE, GT };
 
     template<typename... Args>
     node* make_node(Args&&... args)
@@ -359,7 +358,9 @@ private:
     Allocator alloc{Allocator{}};
     node* root{nullptr};
 };
+
 /* ------------------------------------------------------------------------- */
+
 
 /* Iterators */
 /* ------------------------------------------------------------------------- */
@@ -382,6 +383,7 @@ public:
 
     explicit BinaryTree_iterator_base( node* n )
         : node_stack{}, current{n} { }
+
 
     template<typename OtherNodePointer, typename OtherReference,
         typename = std::enable_if_t<std::is_convertible_v<OtherNodePointer, NodePointer>>
@@ -424,8 +426,17 @@ template<typename NodePointer, typename Reference, typename Tag=preorder_tag>
 class BinaryTree_iterator : public BinaryTree_iterator_base<NodePointer, Reference>
 {
     using self = BinaryTree_iterator;
+    using base = BinaryTree_iterator_base<NodePointer,Reference>;
+    using node = typename base::node;
 public:
     using BinaryTree_iterator_base<NodePointer,Reference>::BinaryTree_iterator_base;
+
+    BinaryTree_iterator(node* first, node* target)
+        : base{first}
+        {
+            while(this->current != target)
+                ++*this;
+        }
 
     self& operator++() noexcept
     {
@@ -465,6 +476,13 @@ public:
                 this->node_stack.push(this->current);
                 this->current = this->current->left;
             }
+        }
+
+    BinaryTree_iterator(node* first, node* target)
+        : base{first}
+        {
+            while(this->current != target)
+                ++*this;
         }
 
     self& operator++() noexcept
@@ -509,6 +527,13 @@ public:
                 this->node_stack.push(this->current);
                 this->current = this->current->right;
             }
+        }
+
+    BinaryTree_iterator(node* first, node* target)
+        : base{first}
+        {
+            while(this->current != target)
+                ++*this;
         }
 
     self& operator++() noexcept
