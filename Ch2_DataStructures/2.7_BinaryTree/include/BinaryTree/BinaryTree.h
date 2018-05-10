@@ -104,7 +104,7 @@ public:
     size_type size() noexcept
     {
         auto count = size_type{0};
-        auto counter = [&count](node*){++count;};
+        auto counter = [&count](const node*){++count;};
         traverse_preorder(counter);
         return count;
     }
@@ -175,21 +175,27 @@ public:
         return find_impl(*this, key);
     }
 
-    template<typename T>
-    static auto find_impl(T& obj, const key_type& key) -> decltype(obj.find(key))
+    iterator erase(const key_type& key)
     {
-        // using result_type = std::result_of_t<T(key_type)>;
-        using result_type = decltype(obj.find(key));
-        auto predicate = [&key](const node* n){
-            if(key < n->data.first) return Cmp::LT;
-            if(n->data.first < key) return Cmp::GT;
-            else return Cmp::EQ;
-        };
-        return result_type{obj.root, find_node(predicate)};
+        auto target = find_parent_for(key);
+
+        if(!target.second) return iterator{};
+
+        switch(node_kind(target.second)){
+            case Kind::Leaf :
+                return erase_leaf(target);
+            case Kind::SemiLeaf :
+                return erase_semileaf(target);
+            case Kind::Branch :
+                return erase_branch(target);
+        }
+        assert(false);
+        return iterator{};
     }
 
 protected:
     enum class Cmp{ LT, LE, EQ, GE, GT };
+    enum class Kind{ Leaf, SemiLeaf, Branch };
 
     template<typename... Args>
     node* make_node(Args&&... args)
@@ -199,22 +205,92 @@ protected:
         return nn;
     }
 
-// --- not needed - same functionality as find_node with appropriate predicate
-    node* find_parent_for(const key_type& key)
+    std::pair<node*,node*> find_parent_for(const key_type& key)
     {
-        for( auto* target = root; target != nullptr; /**/ ){
+        auto* target = root;
+        auto* parent = target;
+        while( target != nullptr ){
             if(key < target->data.first){
-                if(!target->left) return target;
-                else target = target->left;
+                    parent = target;
+                    target = target->left;
             }
             else if( target->data.first < key ){
-                if(!target->right) return target;
-                else target = target->right;
+                    parent = target;
+                    target = target->right;
             }
-            else return target; // key == target->data.first
+            else break; // key == target->data.first
         }
-        Ensures(false); // should never reach this point
-        return nullptr;
+        return {parent, target};
+    }
+
+    Kind node_kind(const node* n){
+        if(!n->left && !n->right) return Kind::Leaf;
+        if(!n->left || !n->right) return Kind::SemiLeaf;
+        return Kind::Branch;
+    }
+
+    iterator erase_leaf(std::pair<node*,node*> target )
+    {
+        if(target.first == target.second) // erase root node
+            root = nullptr;
+        if(target.first->left == target.second)
+            target.first->left = nullptr;
+        else if(target.first->right == target.second)
+            target.first->right = nullptr;
+        free(target.second);
+        return iterator{};
+    }
+
+    iterator erase_semileaf(std::pair<node*,node*> target)
+    {
+        auto* const new_child = [&target]{
+            if(target.second->left){
+                auto* const child = target.second->left;
+                target.second->left = nullptr;
+                return child;
+            } else {
+                auto* const child = target.second->right;
+                target.second->right = nullptr;
+                return child;
+            }
+        }();
+
+        if(target.first == target.second) // erase root node
+            root = new_child;
+        else if(target.first->left == target.second)
+            target.first->left = new_child;
+        else if(target.first->right == target.second)
+            target.first->right = new_child;
+        
+        free(target.second);
+        return iterator{root, new_child};
+    }
+
+    iterator erase_branch(std::pair<node*,node*> target)
+    {
+        auto* const successor = [current=target.second->right]()mutable{
+            auto* pred = current;
+            while(current->left != nullptr){
+                pred = current;
+                current = current->left;
+            }
+            if(pred != current) pred->left = current->right;
+            return current;
+            }();
+
+        successor->left = target.second->left;
+        if(successor != target.second->right)
+            successor->right = target.second->right;
+
+        if(target.first == target.second) // erase root
+            root = successor;
+        else if(target.first->left == target.second)
+            target.first->left = successor;
+        else
+            target.first->right = successor;
+
+        free(target.second);
+        return iterator{root, successor};
     }
 
     template<typename Function>
@@ -272,8 +348,20 @@ protected:
                 default      : assert(false); break;
             }
         }
-        Ensures(false);
         return nullptr;
+    }
+
+    template<typename T>
+    static auto find_impl(T& obj, const key_type& key) -> decltype(obj.find(key))
+    {
+        // using result_type = std::result_of_t<T(key_type)>;
+        using result_type = decltype(obj.find(key));
+        auto predicate = [&key](const node* n){
+            if(key < n->data.first) return Cmp::LT;
+            if(n->data.first < key) return Cmp::GT;
+            else return Cmp::EQ;
+        };
+        return result_type{obj.root, obj.find_node(predicate)};
     }
 
     template<typename Function>
