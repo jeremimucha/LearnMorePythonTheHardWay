@@ -1,5 +1,6 @@
 #include <chrono>
 #include <random>
+#include <utility>
 #include "gtest/gtest.h"
 #include "BinaryTree/BinaryTree.h"
 
@@ -79,6 +80,14 @@ TEST_F(ModifiersTest, InsertResultTest)
     for(; it!=endit; ++it)
         ++count;
     ASSERT_NE(count, 0u);
+}
+
+TEST_F(ModifiersTest, EraseFromEmpty)
+{
+    const auto it = f_tree.erase(42);
+    ASSERT_EQ(it, f_tree.end());
+    ASSERT_TRUE(f_tree.empty());
+    ASSERT_EQ(0u, f_tree.size());
 }
 
 TEST_F(ModifiersTest, EraseLeaf)
@@ -182,6 +191,19 @@ TEST_F(ModifiersTest, EraseBranchRoot)
     const auto it = f_tree.erase(v3.first);
     ASSERT_EQ(it->first, v4.first);
     ASSERT_EQ(5u, f_tree.size());
+}
+
+TEST_F(ModifiersTest, EraseNonExistent)
+{
+    f_tree.insert(v3);
+    f_tree.insert(v5);
+    f_tree.insert(v1);
+    f_tree.insert(v6);
+    f_tree.insert(v4); 
+    f_tree.insert(v2);
+    const auto it = f_tree.erase(42);
+    ASSERT_EQ(it, f_tree.end());
+    ASSERT_EQ(6u, f_tree.size());
 }
 
 } // namespace

@@ -177,25 +177,20 @@ public:
 
     iterator erase(const key_type& key)
     {
-        auto target = find_parent_for(key);
+        auto target = find_target_for(key);
 
         if(!target.second) return iterator{};
 
-        switch(node_kind(target.second)){
-            case Kind::Leaf :
-                return erase_leaf(target);
-            case Kind::SemiLeaf :
-                return erase_semileaf(target);
-            case Kind::Branch :
-                return erase_branch(target);
-        }
-        assert(false);
-        return iterator{};
+        if(target.second->left && target.second->right)
+            return erase_branch(target);
+        else if(target.second->left || target.second->right)
+            return erase_semileaf(target);
+        else
+            return erase_leaf(target);
     }
 
 protected:
     enum class Cmp{ LT, LE, EQ, GE, GT };
-    enum class Kind{ Leaf, SemiLeaf, Branch };
 
     template<typename... Args>
     node* make_node(Args&&... args)
@@ -205,7 +200,8 @@ protected:
         return nn;
     }
 
-    std::pair<node*,node*> find_parent_for(const key_type& key)
+    // Returns a pointer to a pointer to the target and the target itself.
+    std::pair<node**,node*> find_target_for(const key_type& key)
     {
         auto* target = root;
         auto* parent = target;
@@ -220,53 +216,43 @@ protected:
             }
             else break; // key == target->data.first
         }
-        return {parent, target};
+
+        if(parent == target) // root node
+            return {&root, target};
+        if(parent->left == target)
+            return {&parent->left, target};
+        else
+            return {&parent->right, target};
     }
 
-    Kind node_kind(const node* n){
-        if(!n->left && !n->right) return Kind::Leaf;
-        if(!n->left || !n->right) return Kind::SemiLeaf;
-        return Kind::Branch;
-    }
-
-    iterator erase_leaf(std::pair<node*,node*> target )
+    iterator erase_leaf(std::pair<node**,node*> target ) noexcept
     {
-        if(target.first == target.second) // erase root node
-            root = nullptr;
-        if(target.first->left == target.second)
-            target.first->left = nullptr;
-        else if(target.first->right == target.second)
-            target.first->right = nullptr;
+        *target.first = nullptr;
         free(target.second);
         return iterator{};
     }
 
-    iterator erase_semileaf(std::pair<node*,node*> target)
+    iterator erase_semileaf(std::pair<node**,node*> target) noexcept
     {
-        auto* const new_child = [&target]{
-            if(target.second->left){
-                auto* const child = target.second->left;
-                target.second->left = nullptr;
-                return child;
-            } else {
-                auto* const child = target.second->right;
-                target.second->right = nullptr;
-                return child;
-            }
-        }();
+        auto* const new_child = [&dnode=target.second]{
+                if(dnode->left){
+                    auto* const child = dnode->left;
+                    dnode->left = nullptr;
+                    return child;
+                } else {
+                    auto* const child = dnode->right;
+                    dnode->right = nullptr;
+                    return child;
+                }
+            }();
 
-        if(target.first == target.second) // erase root node
-            root = new_child;
-        else if(target.first->left == target.second)
-            target.first->left = new_child;
-        else if(target.first->right == target.second)
-            target.first->right = new_child;
-        
+        *target.first = new_child;
+
         free(target.second);
         return iterator{root, new_child};
     }
 
-    iterator erase_branch(std::pair<node*,node*> target)
+    iterator erase_branch(std::pair<node**,node*> target) noexcept
     {
         auto* const successor = [current=target.second->right]()mutable{
             auto* pred = current;
@@ -282,12 +268,7 @@ protected:
         if(successor != target.second->right)
             successor->right = target.second->right;
 
-        if(target.first == target.second) // erase root
-            root = successor;
-        else if(target.first->left == target.second)
-            target.first->left = successor;
-        else
-            target.first->right = successor;
+        *target.first = successor;
 
         free(target.second);
         return iterator{root, successor};
