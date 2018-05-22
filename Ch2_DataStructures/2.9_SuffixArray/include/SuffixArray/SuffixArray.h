@@ -18,27 +18,32 @@
 #define Ensures(cond)
 #endif
 
+/**
+ * Non owning SuffixArray. Uses std::string_view to find suffixes in a refered to string
+ */
 
 class SuffixArray
 {
-    using string_t        = std::string;
 
 public:
     using suffix_t        = std::string_view;
-    using suffix_vector_t = std::vector<suffix_t>;
-    using size_type       = typename string_t::size_type;
+    using size_type       = typename suffix_t::size_type;
+    using value_type      = std::pair<suffix_t, size_type>;
+    using suffix_vector_t = std::vector<value_type>;
     using iterator        = typename suffix_vector_t::iterator;
     using const_iterator  = typename suffix_vector_t::const_iterator;
 
-    explicit SuffixArray( std::string str )
+    explicit SuffixArray( suffix_t str )
         : data{std::move(str)}
         {
             suffixes.reserve(data.size());
             for( size_type i=0; i<data.size(); ++i ){
                 suffixes.emplace_back(&data[i], data.size()-i);
             }
-
-            std::sort(suffixes.begin(), suffixes.end());
+            auto pred = [](value_type lhs, value_type rhs){
+                return lhs.first < rhs.first;
+            };
+            std::sort(suffixes.begin(), suffixes.end(), pred);
         }
 
 // --- iterators
@@ -49,6 +54,15 @@ public:
     const_iterator end() const { return cend(); }
     const_iterator cend() const { return suffixes.cend(); }
 
+    iterator find(suffix_t substr) noexcept
+    {
+        return find_impl(*this, substr);
+    }
+
+    const_iterator find(suffix_t substr) const noexcept
+    {
+        return find_impl(*this, substr);
+    }
 
     iterator find_shortest( suffix_t substr) noexcept
     {
@@ -70,9 +84,9 @@ public:
         return find_longest_impl(*this, substr);
     }
 
-    suffix_vector_t find_all( suffix_t substr ) const
+    std::vector<value_type> find_all( suffix_t substr ) const
     {
-        auto result = suffix_vector_t{};
+        auto result = std::vector<value_type>{};
         auto pred = IsSubstrPred{substr};
         for(const auto s : suffixes){
             if(pred(s)) result.push_back(s);
@@ -85,17 +99,29 @@ protected:
         explicit IsSubstrPred(suffix_t substr_)
             : substr{std::move(substr_)} { }
 
-        bool operator()(suffix_t s) const
+        bool operator()(value_type s) const
         {
-            return s.size() >= substr.size() && substr == s.substr(0,substr.size());
+            return s.first.size() >= substr.size()
+                && substr == s.first.substr(0,substr.size());
         }
 
         const suffix_t substr;
     };
 
     template<typename T>
+    static auto find_impl(T& obj, suffix_t substr)
+        -> decltype(obj.find(substr))
+    {
+        auto pred = [](value_type elem, auto val){
+            return elem.first < val;
+        };
+        auto res = std::lower_bound(obj.suffixes.begin(), obj.suffixes.end(), substr, pred);
+        return res != obj.suffixes.end() && res->first == substr ? res : obj.suffixes.end();
+    }
+
+    template<typename T>
     static auto find_shortest_impl( T& obj, suffix_t substr)
-    -> decltype(obj.find_shortest(substr))
+        -> decltype(obj.find_shortest(substr))
     {
         using result_type = decltype(obj.find_shortest(substr));
 
@@ -104,7 +130,7 @@ protected:
         for(auto it=res; it != obj.suffixes.end();){
             ++it;
             it = std::find_if(it, obj.suffixes.end(), pred);
-            if(it != obj.suffixes.end() && it->size() < res->size())
+            if(it != obj.suffixes.end() && it->first.size() < res->first.size())
                 res = it;
         }
 
@@ -113,7 +139,7 @@ protected:
 
     template<typename T>
     static auto find_longest_impl( T& obj, suffix_t substr )
-    -> decltype(obj.find_longest(substr))
+        -> decltype(obj.find_longest(substr))
     {
         using result_type = decltype(obj.find_longest(substr));
 
@@ -122,7 +148,7 @@ protected:
         for(auto it=res; it != obj.suffixes.end();){
             ++it;
             it = std::find_if(it, obj.suffixes.end(), pred);
-            if(it != obj.suffixes.end() && res->size() < it->size())
+            if(it != obj.suffixes.end() && res->first.size() < it->first.size())
                 res = it;
         }
 
@@ -132,7 +158,7 @@ protected:
 friend std::ostream& operator<<(std::ostream& os, const SuffixArray& s);
 
 private:
-    string_t        data;
+    suffix_t        data;
     suffix_vector_t suffixes;
 };
 
