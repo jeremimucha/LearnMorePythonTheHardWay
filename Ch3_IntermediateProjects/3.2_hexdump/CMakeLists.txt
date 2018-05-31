@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.1 )
 
-set( Project Xargs )
+set( Project Hexdump )
 project( ${Project} )
 
 
@@ -20,16 +20,16 @@ add_subdirectory( external/google-test )
 # see cmake --help-module-list and cmake --help-module ModuleName
 # for details on a specific module
 # If using boost
-find_package( Boost 1.65.0
-  REQUIRED COMPONENTS
-  filesystem system
-  )
+# find_package( Boost 1.65.0
+#   REQUIRED COMPONENTS
+#   filesystem system
+#   )
 
-if( Boost_FOUND )
-  include_directories( ${Boost_INCLUDE_DIRS} )
-else()
-  message( FATAL_ERROR "Cannot find Boost" )
-endif()
+# if( Boost_FOUND )
+#   include_directories( ${Boost_INCLUDE_DIRS} )
+# else()
+#   message( FATAL_ERROR "Cannot find Boost" )
+# endif()
 
 
 ###############################################################################
@@ -75,7 +75,7 @@ set( CMAKE_VERBOSE_MAKEFILE OFF )
 ###############################################################################
 # Internal library first
 
-link_libraries( wsock32 ws2_32)
+# link_libraries( wsock32 ws2_32)
 
 if( LibrarySources )
 set( InternalLibrary "${Project}_" ) # cmake will add a "lib" prefix to the name
@@ -124,7 +124,7 @@ target_link_libraries( ${PROJECT_NAME}
 endif()
 target_link_libraries( ${PROJECT_NAME}
     Clara::Clara
-    ${Boost_LIBRARIES}
+    # ${Boost_LIBRARIES}
     )
 
 
