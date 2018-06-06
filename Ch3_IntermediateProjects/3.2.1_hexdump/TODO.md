@@ -26,21 +26,11 @@ hexdump [options] file...
 -C, --canonical
     Canonical hex+ASCII display.  Display the input offset in hexadecimal, followed by sixteen space-separated, two-column, hexadecimal bytes, followed by the same sixteen bytes in %_p format enclosed in '|' characters.
 
--d, --two-bytes-decimal
-    Two-byte  decimal display.  Display the input offset in hexadecimal, followed by eight space-separated, five-column, zero-filled, two-byte units of input data, in unsigned decimal, per line.
-
 -n, --length length
         Interpret only length bytes of input.
 
--o, --two-bytes-octal
-        Two-byte  octal  display.   Display  the input offset in hexadecimal, followed by eight space-separated, six-column, zero-filled, two-byte quantities of input data, in octal, per line.
-
 -s, --skip offset
         Skip offset bytes from the beginning of the input.
-
--x, --two-bytes-hex
-        Two-byte hexadecimal display.  Display the input offset in hexadecimal, followed by eight space-separated, four-col‐
-umn, zero-filled, two-byte quantities of input data, in hexadecimal, per line.
 
 -h, --help
         Display help text and exit.
