@@ -1,80 +1,74 @@
-#include <iostream>
-#include <fstream>
-// #include <iomanip>
-#include <memory>
-#include <utility>
+ #include <iostream>
+#include <string>
 
 #include "clara/clara.hpp"
 
-#include "HexChunk.h"
-#include "HexChunkStream.h"
-#include "Printer.h"
+#include "Translator.h"
+#include "Translating_stream.h"
+#include "Filtering_istream.h"
 
 using clara::Opt; using clara::Arg; using clara::Help;
 
-struct commandline_args {
-    std::string input_file{};
-    bool octal;
-    bool character;
-    bool canonical;
+struct cmdline_args {
+    std::string set1;
+    std::string set2;
+    bool complement;
+    bool del;
+    bool squeeze;
+    bool truncate;
     bool help_flag;
 };
 
-namespace
-{
-
-Printer_hex       oshex{std::cout};
-Printer_octal     osoct{std::cout};
-Printer_char      oschar{std::cout};
-Printer_canonical oscanon{std::cout};
-
-}
-
-
 int main(int argc, char* argv[])
 {
-    auto cli_args = commandline_args{};
+    auto cli_args = cmdline_args{};
     auto cli
-        = Opt( cli_args.octal )
-            ["-b"]["--one-byte-octal"]("One byte octal display")
-        | Opt( cli_args.character )
-            ["-c"]["--one-byte-char"]("One byte character display")
-        | Opt( cli_args.canonical )
-            ["-C"]["--canonical"]("Canonical hex+ascii display")
-        | Arg( cli_args.input_file, "Input file" )
+        = Opt( cli_args.complement )
+            ["-c"]["-C"]["--complement"]("use the complement of SET1")
+        | Opt( cli_args.del )
+            ["-d"]["--delete"]("delete characters in SET1, do not translate")
+        | Opt( cli_args.squeeze )
+            ["-s"]["--squeeze-repeats"]
+            ("repleace each sequence of repeated character that is listed in the last SET"\
+             " with a single occurence of that character")
+        | Opt( cli_args.truncate )
+            ["-t"]["--truncate_set1"]("first truncate SET1 to length of SET2")
+        | Arg( cli_args.set1, "SET1").required()
+        | Arg( cli_args.set2, "SET2")
         | Help( cli_args.help_flag );
 
     auto cli_result = cli.parse(clara::Args(argc,argv));
-    if( !cli_result || cli_args.help_flag ){
+    if( argc < 2 || !cli_result || cli_args.help_flag 
+        || (cli_args.del && !cli_args.set1.empty()) ){
         std::cerr << cli << std::endl;
         return 1;
     }
-    auto infile = std::ifstream{cli_args.input_file};
-    if( !cli_args.input_file.empty() && !infile.is_open()){
-        std::cerr << "Failed to open the file" << cli_args.input_file;
-        return 1;
-    }
-    auto chunk_stream = [fileopen=infile.is_open(),&infile=infile](){
-        if(fileopen)
-            return Hex_chunk_stream{infile};
-        else
-            return Hex_chunk_stream{std::cin};
-    }();
 
-    if(cli_args.canonical){
-        for(Hex_chunk chunk{{0},0,0}; chunk_stream >> chunk;)
-            oscanon << chunk << std::endl;;
+    if( cli_args.complement ){
+        std::cerr << "Complement not yet implemented";
+        return 2;
     }
-    else if(cli_args.octal){
-        for(Hex_chunk chunk{{0},0,0}; chunk_stream >> chunk;)
-            osoct << chunk << std::endl;;
+
+    auto tos = Translating_stream{std::cout, {cli_args.set1, cli_args.set2}};
+    auto fis = Filtering_istream{std::cin};
+    if(cli_args.del && cli_args.squeeze){
+        fis.del(true);
+        fis.del_set(cli_args.set1);
+        fis.squeeze(true);
+        fis.squeeze_set(cli_args.set2);
     }
-    else if(cli_args.character){
-        for(Hex_chunk chunk{{0},0,0}; chunk_stream >> chunk;)
-            oschar << chunk << std::endl;;
+    else if(cli_args.del){
+        fis.del(true);
+        fis.del_set(cli_args.set1);
     }
-    else{
-        for(Hex_chunk chunk{{0},0,0}; chunk_stream >> chunk;)
-            oshex << chunk << std::endl;;
+    else if(cli_args.squeeze){
+        fis.squeeze(true);
+        fis.squeeze_set(cli_args.set1);
+    }
+
+    if( cli_args.truncate )
+        tos.truncate();
+    for( char ch; fis.get(ch); ){
+        tos << ch;
     }
 }

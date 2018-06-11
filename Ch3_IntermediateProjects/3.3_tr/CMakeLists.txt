@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.1 )
 
-set( Project Hexdump )
+set( Project Tr )
 project( ${Project} )
 
 
@@ -77,6 +77,7 @@ set( CMAKE_VERBOSE_MAKEFILE OFF )
 
 # link_libraries( wsock32 ws2_32)
 
+add_compile_options(-fconcepts )
 if( LibrarySources )
 set( InternalLibrary "${Project}_" ) # cmake will add a "lib" prefix to the name
 
@@ -114,6 +115,7 @@ endif()
 if( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
 	target_compile_options( ${PROJECT_NAME} PRIVATE /W4 /WX )
 endif()
+
 
 # If using any external libraries include them here after the Internal Library.
 # They need to be properly found first. See find_package section

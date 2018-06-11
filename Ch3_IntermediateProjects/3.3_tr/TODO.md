@@ -30,10 +30,6 @@ Syntax: tr [OPTION]... SET1 [SET2]
     -t, --truncate-set1
             first truncate SET1 to length of SET2
 
-    --help display this help and exit
-
-    --version
-            output version information and exit
 
     SETs are specified as strings of characters.  Most represent themselves.  Interpreted sequences are:
 
