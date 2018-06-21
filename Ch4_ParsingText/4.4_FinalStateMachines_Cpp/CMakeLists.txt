@@ -79,6 +79,36 @@ target_compile_options( mem_fnp PUBLIC
     -fconcepts
     )
 
+add_executable( state_pattern src/state_pattern.cpp )
+
+target_include_directories( state_pattern
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    )
+target_compile_options( state_pattern PUBLIC
+    -Wall -Wextra -pedantic -Werror
+    -fconcepts
+    )
+
+add_executable( state_crtp src/state_crtp.cpp )
+
+target_include_directories( state_crtp
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    )
+target_compile_options( state_crtp PUBLIC
+    -Wall -Wextra -pedantic -Werror
+    -fconcepts
+    )
+
+add_executable( state_crtp_2 src/state_crtp_2.cpp )
+
+target_include_directories( state_crtp_2
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    )
+target_compile_options( state_crtp_2 PUBLIC
+    -Wall -Wextra -pedantic -Werror
+    -fconcepts
+    )
+
 # if using any external libraries include them here
 # they need to be properly found first. See find_package section
 # target_link_libraries( ${PROJECT_NAME}
