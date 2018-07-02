@@ -79,12 +79,32 @@ target_compile_options( mem_fnp PUBLIC
     -fconcepts
     )
 
+add_executable( fun_ptrs src/fun_ptrs.cpp )
+
+target_include_directories( fun_ptrs
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    )
+target_compile_options( fun_ptrs PUBLIC
+    -Wall -Wextra -pedantic -Werror
+    -fconcepts
+    )
+
 add_executable( state_pattern src/state_pattern.cpp )
 
 target_include_directories( state_pattern
     PUBLIC ${PROJECT_SOURCE_DIR}/include
     )
 target_compile_options( state_pattern PUBLIC
+    -Wall -Wextra -pedantic -Werror
+    -fconcepts
+    )
+
+add_executable( state_pattern_2 src/state_pattern_2.cpp )
+
+target_include_directories( state_pattern_2
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    )
+target_compile_options( state_pattern_2 PUBLIC
     -Wall -Wextra -pedantic -Werror
     -fconcepts
     )
