@@ -35,7 +35,7 @@ target_sources( ${PROJECT_NAME}
     )
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options( ${PROJECT_NAME} PUBLIC
-    -Wall -Wextra -pedantic -Werror
+    -Weverything -Wall -Wextra -pedantic -Werror
     -fconcepts
     )
 endif()

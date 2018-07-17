@@ -73,21 +73,22 @@ if (Cppcheck)
         APPEND Cppcheck 
             "--enable=all"
             "--inconclusive"
-            "--force" 
+            "--force"
+            "--verbose"
+            "--language=c++"
             "--inline-suppr"
-            "-I${PROJECT_SOURCE_DIR}/include"
-            "-i external/"
-            "-i build/"
-            "${PROJECT_SOURCE_DIR}"
+            "${CMAKE_SOURCE_DIR}/include/*.h"
+            "${CMAKE_SOURCE_DIR}/src/*.cpp"
+            "${CMAKE_SOURCE_DIR}/test/*.cpp"
     )
-    message("cppcheck -I${PROJECT_SOURCE_DIR}/include")
+    message("${Cppcheck}")
 endif()
 
 find_program(Clangtidy NAMES clang-tidy)
 if (Clangtidy)
     list(
         APPEND Clangtidy 
-            "-checks='*, -google*, -fuchsia*'"
+            "-checks='*'"
             "-header-filter='.*'"
     )
 endif()
@@ -117,12 +118,12 @@ PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 set_target_properties( ${InternalLibrary}
     PROPERTIES
-    CMAKE_CXX_CLANG_TIDY ${Clangtidy}
-    CMAKE_CXX_CPPCHECK ${Cppcheck}
+    CXX_CLANG_TIDY "${Clangtidy}"
+    CXX_CPPCHECK "${Cppcheck}"
 )
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
 target_compile_options( ${InternalLibrary} PUBLIC
-  -Wall -Wextra -pedantic -Werror
+  -Weverything -Wall -Wextra -pedantic -Werror
   -fconcepts )
 endif()
 if( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
@@ -143,12 +144,12 @@ PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 set_target_properties( ${PROJECT_NAME}
     PROPERTIES
-    CMAKE_CXX_CLANG_TIDY ${Clangtidy}
-    CMAKE_CXX_CPPCHECK ${Cppcheck}
+    CXX_CLANG_TIDY "${Clangtidy}"
+    CXX_CPPCHECK "${Cppcheck}"
 )
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
 target_compile_options( ${PROJECT_NAME} PUBLIC
-  -Wall -Wextra -pedantic -Werror
+  -Weverything -Wall -Wextra -pedantic -Werror
   -fconcepts
   )
 endif()
