@@ -32,3 +32,13 @@ void PunyPyWorld::set_func(const std::string& name, Function&& prod)
     if(!res.second)
         throw Bad_declaration{"Redeclaration of a function " + name};
 }
+
+auto PunyPyWorld::get_buildin(const std::string& name)
+-> std::function<int(std::vector<int> const&)>
+{
+    auto res = buildins_.find(name);
+    if(res != buildins_.end()){
+        return res->second;
+    }
+    return {};
+}

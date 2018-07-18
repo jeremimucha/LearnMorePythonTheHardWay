@@ -46,8 +46,21 @@ public:
     void set_var(const std::string& name, int val);
     Function* get_func(const std::string& name);
     void set_func(const std::string& name, Function&& prod);
+    std::function<int(std::vector<int> const&)> get_buildin(const std::string& name);
+    template<typename Func>
+    void set_buildin(const std::string& name, Func&& f);
 
 private:
     std::unordered_map<std::string, int> variables_{};
     std::unordered_map<std::string, Function> functions_{};
+    std::unordered_map<std::string, std::function<int(const std::vector<int>&)>> buildins_{};
 };
+
+template<typename Func>
+void PunyPyWorld::set_buildin(const std::string& name, Func&& f)
+{
+    auto res = buildins_.emplace(name, std::forward<Func>(f));
+    if(!res.second){
+        throw Bad_declaration{"Redeclaration of a buildin function " + name};
+    }
+}

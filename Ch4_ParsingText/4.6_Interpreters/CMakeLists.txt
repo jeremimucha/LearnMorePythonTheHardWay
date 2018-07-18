@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.1 )
 
-set( Project puny_analyzer )
+set( Project puny_interpreter )
 project( ${Project} )
 
 

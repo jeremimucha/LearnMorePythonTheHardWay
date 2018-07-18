@@ -105,8 +105,10 @@ void FuncCall_prod::analyze(PunyPyWorld& world)
 {
     INFO();
     params_.analyze(world);
-    // TODO:
-    // * check if a function with the given `name_` was defined
+    // check buildins first
+    if(const auto f = world.get_buildin(name_); f){
+        return;
+    }
     const auto* const func = world.get_func(name_);
     if(!func){
         throw Bad_production("Bad function call. Function " + name_ +
@@ -123,6 +125,10 @@ void FuncCall_prod::analyze(PunyPyWorld& world)
 
 int FuncCall_prod::interpret(PunyPyWorld& world)
 {
+    // first check if a buildin function exists
+    if(auto buildin = world.get_buildin(name_); buildin){
+        return buildin(params_.interpret(world));
+    }
     // * introduce local scope
     auto local_world = world;
     auto* const function = world.get_func(name_);
@@ -149,4 +155,9 @@ void Var_prod::analyze(PunyPyWorld& world)
         throw Bad_production{"Invalid use of a variable. Variable " + var_ +
                                 " has not been declared"};
     }
+}
+
+int Var_prod::interpret(PunyPyWorld& world)
+{
+    return world.get_var(var_).first;
 }

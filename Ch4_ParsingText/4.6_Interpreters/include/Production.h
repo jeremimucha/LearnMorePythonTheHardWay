@@ -502,7 +502,12 @@ inline auto Eof() noexcept
     return Production{eof_tag};
 }
 
-class FuncDef_prod : public Prod_base
+class Func_base : public Prod_base
+{
+
+};
+
+class FuncDef_prod : public Func_base
 {
     friend class Production;
     friend class Function;
@@ -708,10 +713,10 @@ public:
         func_->analyze(world);
     }
 
-    int interpret(PunyPyWorld& world)
-    {
-        return func_->interpret(world);
-    }
+    // int interpret(PunyPyWorld& world)
+    // {
+    //     return func_->interpret(world);
+    // }
 
     int param_count() const
     {
@@ -736,6 +741,7 @@ public:
 private:
     std::unique_ptr<FuncDef_prod> func_;
 };
+
 
 class Int_prod : public Expr_prod
 {
@@ -776,6 +782,11 @@ class Int_prod : public Expr_prod
     }
 
     int value() const final { return val_; }
+
+    int interpret(PunyPyWorld& /*world*/) final
+    {
+        return val_;
+    }
 
 // --- member data
     int val_;
@@ -818,6 +829,8 @@ class Var_prod : public Expr_prod
     }
 
     void analyze(PunyPyWorld& world) final;
+
+    int interpret(PunyPyWorld& world) final;
 
 // --- member data
     std::string var_;
@@ -875,6 +888,11 @@ class Plus_prod : public Expr_prod
         INFO();
         left_.analyze(world);
         right_.analyze(world);
+    }
+
+    int interpret(PunyPyWorld& world) final
+    {
+        return left_.interpret(world) + right_.interpret(world);
     }
 
 // --- member data
